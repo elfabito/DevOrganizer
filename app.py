@@ -7,6 +7,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from storage import ProjectStorage
 from ai_service import generate_plan, generate_weekly_summary, generate_feature_suggestions, generate_estimation
 from weekly_summary_storage import WeeklySummaryStorage
+from clickup_service import get_clickup_service
 import os
 
 STORAGE_TYPE = 'sqlite'  # Opciones: 'json' o 'sqlite'
@@ -456,6 +457,204 @@ def delete_estimation(estimation_id):
     except Exception as e:
         return jsonify({
             'error': f'Failed to delete estimation: {str(e)}'
+        }), 500
+
+
+@app.route('/clickup/check-config', methods=['GET'])
+def check_clickup_config():
+    """
+    Check if ClickUp API token is configured in environment
+    """
+    try:
+        clickup = get_clickup_service()
+        has_token = bool(clickup.api_token and clickup.api_token.strip())
+        
+        return jsonify({
+            'configured': has_token,
+            'message': 'Token configured in .env' if has_token else 'No token configured'
+        })
+    except Exception as e:
+        return jsonify({
+            'configured': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/clickup/workspaces', methods=['GET'])
+def get_clickup_workspaces():
+    """
+    Get all ClickUp workspaces for the authenticated user
+    """
+    try:
+        # Get API token from request header, or use environment variable
+        api_token = request.headers.get('X-ClickUp-Token') or None
+        
+        # Get ClickUp service
+        clickup = get_clickup_service(api_token)
+        
+        # Check if token is configured
+        if not clickup.api_token:
+            return jsonify({
+                'error': 'ClickUp API token not configured. Please add it to .env file or provide it in the request.'
+            }), 401
+        
+        # Fetch workspaces
+        result = clickup.get_workspaces()
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to fetch workspaces: {str(e)}'
+        }), 500
+
+
+@app.route('/clickup/spaces/<team_id>', methods=['GET'])
+def get_clickup_spaces(team_id):
+    """
+    Get all spaces (projects) within a ClickUp workspace
+    """
+    try:
+        # Get API token from request header, or use environment variable
+        api_token = request.headers.get('X-ClickUp-Token') or None
+        
+        # Get ClickUp service
+        clickup = get_clickup_service(api_token)
+        
+        # Fetch spaces
+        result = clickup.get_spaces(team_id)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to fetch spaces: {str(e)}'
+        }), 500
+
+
+@app.route('/clickup/shared-lists/<team_id>', methods=['GET'])
+def get_clickup_shared_lists(team_id):
+    """
+    Get all lists shared with the user in a workspace
+    """
+    try:
+        # Get API token from request header, or use environment variable
+        api_token = request.headers.get('X-ClickUp-Token') or None
+        
+        # Get ClickUp service
+        clickup = get_clickup_service(api_token)
+        
+        # Fetch shared lists
+        result = clickup.get_shared_lists(team_id)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to fetch shared lists: {str(e)}'
+        }), 500
+
+
+@app.route('/clickup/folders/<space_id>', methods=['GET'])
+def get_clickup_folders(space_id):
+    """
+    Get all folders within a ClickUp space
+    """
+    try:
+        # Get API token from request header, or use environment variable
+        api_token = request.headers.get('X-ClickUp-Token') or None
+        
+        # Get ClickUp service
+        clickup = get_clickup_service(api_token)
+        
+        # Fetch folders
+        result = clickup.get_folders(space_id)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to fetch folders: {str(e)}'
+        }), 500
+
+
+@app.route('/clickup/lists/<space_id>', methods=['GET'])
+@app.route('/clickup/lists/<space_id>/<folder_id>', methods=['GET'])
+def get_clickup_lists(space_id, folder_id=None):
+    """
+    Get all lists within a ClickUp space or folder
+    """
+    try:
+        # Get API token from request header, or use environment variable
+        api_token = request.headers.get('X-ClickUp-Token') or None
+        
+        # Get ClickUp service
+        clickup = get_clickup_service(api_token)
+        
+        # Fetch lists
+        result = clickup.get_lists(space_id, folder_id)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to fetch lists: {str(e)}'
+        }), 500
+
+
+@app.route('/clickup/create-tasks', methods=['POST'])
+def create_clickup_tasks():
+    """
+    Create tasks in ClickUp from project phases
+    """
+    try:
+        data = request.get_json()
+        list_id = data.get('list_id')
+        phases = data.get('phases', [])
+        
+        # Get API token from request header, or use environment variable
+        api_token = request.headers.get('X-ClickUp-Token') or None
+        
+        # Validate input
+        if not list_id:
+            return jsonify({
+                'error': 'List ID is required'
+            }), 400
+        
+        if not phases:
+            return jsonify({
+                'error': 'No tasks to create'
+            }), 400
+        
+        # Get ClickUp service
+        clickup = get_clickup_service(api_token)
+        
+        # Create tasks
+        result = clickup.create_tasks_from_phases(list_id, phases)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to create tasks: {str(e)}'
         }), 500
 
 

@@ -519,6 +519,91 @@
                     <div style="background: #1f2937; color: #f3f4f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8;">{{ project.ai_data.clickup_plan }}</div>
                 {% endif %}
             </div>
+
+            <!-- ClickUp Integration Section -->
+            <div class="section" style="margin-top: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px; border-radius: 16px; color: white;">
+                <h3 style="color: white; margin-bottom: 8px;">🚀 Export to ClickUp</h3>
+                <p style="opacity: 0.9; margin-bottom: 24px;">Send these tasks directly to your ClickUp workspace</p>
+                
+                <!-- Status/Info Message -->
+                <div id="clickupConfigStatus" style="margin-bottom: 20px; padding: 12px 16px; background: rgba(255,255,255,0.1); border-radius: 8px; display: none;">
+                    <span id="configStatusIcon">🔄</span> <span id="configStatusText">Verificando configuración...</span>
+                </div>
+
+                <!-- Workspace Selection -->
+                <div id="workspaceSection" style="display: none; margin-bottom: 20px;">
+                    <label for="workspaceSelect" style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">
+                        Select Workspace:
+                    </label>
+                    <select 
+                        id="workspaceSelect" 
+                        onchange="loadClickUpSpaces()"
+                        style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;"
+                    >
+                        <option value="">Loading workspaces...</option>
+                    </select>
+                </div>
+
+                <!-- Space Selection -->
+                <div id="spaceSection" style="display: none; margin-bottom: 20px;">
+                    <label for="spaceSelect" style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">
+                        Select Space (Project):
+                    </label>
+                    <select 
+                        id="spaceSelect" 
+                        onchange="loadClickUpFolders()"
+                        style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;"
+                    >
+                        <option value="">Select a workspace first...</option>
+                    </select>
+                </div>
+
+                <!-- Folder Selection (Optional) -->
+                <div id="folderSection" style="display: none; margin-bottom: 20px;">
+                    <label for="folderSelect" style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">
+                        Select Folder <span style="opacity: 0.7; font-weight: 400; font-size: 13px;">(opcional)</span>:
+                    </label>
+                    <select 
+                        id="folderSelect" 
+                        onchange="loadClickUpLists()"
+                        style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;"
+                    >
+                        <option value="">Select a space first...</option>
+                    </select>
+                    <small style="display: block; margin-top: 8px; opacity: 0.8;">
+                        💡 Si no hay folders, las listas se mostrarán directamente
+                    </small>
+                </div>
+
+                <!-- List Selection -->
+                <div id="listSection" style="display: none; margin-bottom: 20px;">
+                    <label for="listSelect" style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">
+                        Select List:
+                    </label>
+                    <select 
+                        id="listSelect"
+                        style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;"
+                    >
+                        <option value="">Select a space first...</option>
+                    </select>
+                </div>
+
+                <!-- Create Tasks Button -->
+                <div id="createTasksSection" style="display: none;">
+                    <button 
+                        onclick="createClickUpTasks()" 
+                        class="btn"
+                        style="width: 100%; background: white; color: #667eea; padding: 16px; border: none; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; transition: transform 0.2s;"
+                        onmouseover="this.style.transform='scale(1.02)'"
+                        onmouseout="this.style.transform='scale(1)'"
+                    >
+                        ✨ Create Tasks in ClickUp
+                    </button>
+                </div>
+
+                <!-- Status Messages -->
+                <div id="clickupStatus" style="margin-top: 16px; padding: 12px; border-radius: 8px; display: none;"></div>
+            </div>
         </div>
     </div>
 
@@ -874,5 +959,342 @@
             generateBtn.textContent = '✨ Generate Feature Suggestions';
         }
     }
+
+    // ClickUp Integration Functions
+    function showStatus(message, isError = false) {
+        const statusDiv = document.getElementById('clickupStatus');
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = isError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)';
+        statusDiv.style.color = 'white';
+        statusDiv.innerHTML = message;
+        
+        if (!isError) {
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+    }
+
+    function showConfigStatus(icon, message, isError = false) {
+        const statusDiv = document.getElementById('clickupConfigStatus');
+        const iconSpan = document.getElementById('configStatusIcon');
+        const textSpan = document.getElementById('configStatusText');
+        
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = isError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.1)';
+        iconSpan.textContent = icon;
+        textSpan.textContent = message;
+    }
+
+    async function loadClickUpWorkspaces() {
+        try {
+            showStatus('🔄 Loading workspaces...');
+            
+            // Token must be configured in .env - no manual input
+            const response = await fetch('/clickup/workspaces', {
+                method: 'GET'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || 'Failed to load workspaces');
+            }
+
+            // Populate workspace dropdown
+            const workspaceSelect = document.getElementById('workspaceSelect');
+            workspaceSelect.innerHTML = '<option value="">Select a workspace...</option>';
+            
+            data.workspaces.forEach(workspace => {
+                const option = document.createElement('option');
+                option.value = workspace.id;
+                option.textContent = workspace.name;
+                workspaceSelect.appendChild(option);
+            });
+
+            // Show workspace section
+            document.getElementById('workspaceSection').style.display = 'block';
+            showStatus('✅ Connected successfully! Select a workspace.');
+            showConfigStatus('✅', 'Token configurado correctamente en .env');
+
+        } catch (error) {
+            showStatus('❌ ' + error.message, true);
+            showConfigStatus('❌', 'Error: ' + error.message, true);
+        }
+    }
+
+    async function loadClickUpSpaces() {
+        const workspaceSelect = document.getElementById('workspaceSelect');
+        const teamId = workspaceSelect.value;
+        
+        if (!teamId) {
+            return;
+        }
+
+        try {
+            showStatus('🔄 Loading spaces...');
+            
+            const response = await fetch(`/clickup/spaces/${teamId}`, {
+                method: 'GET'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || 'Failed to load spaces');
+            }
+
+            // Populate space dropdown
+            const spaceSelect = document.getElementById('spaceSelect');
+            spaceSelect.innerHTML = '<option value="">Select a space...</option>';
+            
+            data.spaces.forEach(space => {
+                const option = document.createElement('option');
+                option.value = space.id;
+                option.textContent = space.name;
+                spaceSelect.appendChild(option);
+            });
+
+            // Show space section
+            document.getElementById('spaceSection').style.display = 'block';
+            showStatus('✅ Spaces loaded! Select a space.');
+
+        } catch (error) {
+            showStatus('❌ ' + error.message, true);
+        }
+    }
+
+    async function loadClickUpFolders() {
+        const spaceSelect = document.getElementById('spaceSelect');
+        const spaceId = spaceSelect.value;
+        
+        if (!spaceId) {
+            return;
+        }
+
+        // Check if "Shared with me" is selected
+        if (spaceId === 'shared_with_me') {
+            await loadSharedLists();
+            return;
+        }
+
+        try {
+            showStatus('🔄 Loading folders and lists...');
+            
+            // Try to load folders first
+            const foldersResponse = await fetch(`/clickup/folders/${spaceId}`, {
+                method: 'GET'
+            });
+
+            const foldersData = await foldersResponse.json();
+
+            if (foldersResponse.ok && foldersData.folders && foldersData.folders.length > 0) {
+                // Populate folder dropdown
+                const folderSelect = document.getElementById('folderSelect');
+                folderSelect.innerHTML = '<option value="">-- Sin folder (listas directas) --</option>';
+                
+                foldersData.folders.forEach(folder => {
+                    const option = document.createElement('option');
+                    option.value = folder.id;
+                    option.textContent = folder.name;
+                    folderSelect.appendChild(option);
+                });
+
+                // Show folder section
+                document.getElementById('folderSection').style.display = 'block';
+                showStatus('✅ Folders loaded! Select a folder or load direct lists.');
+            }
+            
+            // Always try to load folderless lists
+            await loadClickUpLists();
+
+        } catch (error) {
+            // If folders fail, just load lists
+            await loadClickUpLists();
+        }
+    }
+
+    async function loadSharedLists() {
+        const workspaceSelect = document.getElementById('workspaceSelect');
+        const teamId = workspaceSelect.value;
+        
+        try {
+            showStatus('🔄 Loading shared lists...');
+            
+            const response = await fetch(`/clickup/shared-lists/${teamId}`, {
+                method: 'GET'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || 'Failed to load shared lists');
+            }
+
+            // Hide folder section for shared lists
+            document.getElementById('folderSection').style.display = 'none';
+
+            // Populate list dropdown with shared lists
+            const listSelect = document.getElementById('listSelect');
+            listSelect.innerHTML = '<option value="">Select a shared list...</option>';
+            
+            if (data.lists.length === 0) {
+                listSelect.innerHTML = '<option value="">No shared lists found</option>';
+                showStatus('⚠️ No shared lists found in this workspace.', true);
+                return;
+            }
+            
+            data.lists.forEach(list => {
+                const option = document.createElement('option');
+                option.value = list.id;
+                option.textContent = `${list.name} (${list.space_name})`;
+                listSelect.appendChild(option);
+            });
+
+            // Show list section and create button
+            document.getElementById('listSection').style.display = 'block';
+            document.getElementById('createTasksSection').style.display = 'block';
+            showStatus(`✅ ${data.lists.length} shared lists loaded! Select a list and create tasks.`);
+
+        } catch (error) {
+            showStatus('❌ ' + error.message, true);
+        }
+    }
+
+    async function loadClickUpLists() {
+        const spaceSelect = document.getElementById('spaceSelect');
+        const spaceId = spaceSelect.value;
+        
+        if (!spaceId) {
+            return;
+        }
+
+        // Check if a folder is selected
+        const folderSelect = document.getElementById('folderSelect');
+        const folderId = folderSelect ? folderSelect.value : null;
+
+        try {
+            showStatus('🔄 Loading lists...');
+            
+            // Build URL based on whether folder is selected
+            const url = folderId 
+                ? `/clickup/lists/${spaceId}/${folderId}`
+                : `/clickup/lists/${spaceId}`;
+            
+            const response = await fetch(url, {
+                method: 'GET'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || 'Failed to load lists');
+            }
+
+            // Populate list dropdown
+            const listSelect = document.getElementById('listSelect');
+            listSelect.innerHTML = '<option value="">Select a list...</option>';
+            
+            if (data.lists.length === 0) {
+                listSelect.innerHTML = '<option value="">No lists found in this location</option>';
+                showStatus('⚠️ No lists found. Try selecting a different folder or space.', true);
+                return;
+            }
+            
+            data.lists.forEach(list => {
+                const option = document.createElement('option');
+                option.value = list.id;
+                option.textContent = list.name;
+                listSelect.appendChild(option);
+            });
+
+            // Show list section and create button
+            document.getElementById('listSection').style.display = 'block';
+            document.getElementById('createTasksSection').style.display = 'block';
+            
+            const location = folderId ? 'folder' : 'space';
+            showStatus(`✅ ${data.lists.length} lists loaded from ${location}! Select a list and create tasks.`);
+
+        } catch (error) {
+            showStatus('❌ ' + error.message, true);
+        }
+    }
+
+    async function createClickUpTasks() {
+        const listSelect = document.getElementById('listSelect');
+        const listId = listSelect.value;
+        
+        if (!listId) {
+            showStatus('❌ Please select a list first', true);
+            return;
+        }
+
+        // Get the project phases from the page data
+        const phases = {{ project.ai_data.clickup_plan.phases | tojson | safe }};
+        
+        if (!phases || phases.length === 0) {
+            showStatus('❌ No tasks found to create', true);
+            return;
+        }
+
+        try {
+            showStatus('🔄 Creating tasks in ClickUp...');
+            
+            const response = await fetch('/clickup/create-tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    list_id: listId,
+                    phases: phases
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || 'Failed to create tasks');
+            }
+
+            // Show success message
+            const successMessage = `
+                ✅ <strong>Tasks created successfully!</strong><br>
+                📊 Created: ${data.created_count} tasks<br>
+                ${data.failed_count > 0 ? `⚠️ Failed: ${data.failed_count} tasks<br>` : ''}
+                <a href="https://app.clickup.com" target="_blank" style="color: white; text-decoration: underline; margin-top: 8px; display: inline-block;">
+                    Open ClickUp →
+                </a>
+            `;
+            showStatus(successMessage);
+
+        } catch (error) {
+            showStatus('❌ ' + error.message, true);
+        }
+    }
+
+    // Auto-load workspaces if token is configured in .env
+    async function autoLoadClickUpWorkspaces() {
+        try {
+            showConfigStatus('🔄', 'Verificando configuración de ClickUp...');
+            
+            // Check if token is configured in .env
+            const checkResponse = await fetch('/clickup/check-config');
+            const checkData = await checkResponse.json();
+            
+            if (checkData.configured) {
+                showConfigStatus('✅', 'Token encontrado en .env - Cargando workspaces...');
+                // Auto-load workspaces
+                await loadClickUpWorkspaces();
+            } else {
+                showConfigStatus('❌', 'Token no configurado. Agrega CLICKUP_API_TOKEN en el archivo .env y reinicia el servidor.', true);
+            }
+        } catch (error) {
+            showConfigStatus('❌', 'Error al verificar configuración: ' + error.message, true);
+        }
+    }
+
+    // Run auto-load when page loads
+    document.addEventListener('DOMContentLoaded', autoLoadClickUpWorkspaces);
 </script>
 {% endblock %}
