@@ -184,3 +184,268 @@ Return only the summary text, no additional formatting or headers."""
     except Exception as e:
         print(f"Error calling Groq API for weekly summary: {str(e)}")
         raise Exception(f"Failed to generate weekly summary: {str(e)}. Please check your GROQ_API_KEY environment variable.")
+
+
+def generate_estimation(project_name: str, project_description: str) -> Dict:
+    """
+    Generate AI-based project estimation with phases and hours using Groq
+    
+    Args:
+        project_name: Name of the project
+        project_description: Detailed description of the project
+        
+    Returns:
+        Dictionary containing phases with tasks and estimated hours
+    """
+    
+    try:
+        # Validate input
+        if not project_description or not project_description.strip():
+            return {
+                "phases": [],
+                "total_hours": 0,
+                "error": "Please provide a project description"
+            }
+        
+        # Create the prompt for Groq
+        prompt = f"""You are a senior project manager and software estimation expert. Analyze this project and provide a detailed time estimation.
+
+Project Name: {project_name}
+
+Project Description:
+{project_description}
+
+Please provide a comprehensive project estimation broken down into phases. Each phase should contain specific tasks with hour estimates.
+
+Return your estimation in the following JSON format:
+
+{{
+  "phases": [
+    {{
+      "name": "Phase name with emoji (e.g., 🎨 Design & Planning)",
+      "tasks": [
+        {{"task": "Task description", "hours": 8}},
+        {{"task": "Task description", "hours": 16}},
+        {{"task": "Task description", "hours": 12}}
+      ],
+      "total_hours": 36
+    }},
+    {{
+      "name": "Another phase",
+      "tasks": [...],
+      "total_hours": 50
+    }}
+  ],
+  "total_hours": 86
+}}
+
+Guidelines:
+1. Create 4-7 realistic phases based on the project scope
+2. Each phase should have 3-6 specific, actionable tasks
+3. Estimate hours realistically (consider complexity, testing, debugging)
+4. Include phases like: Planning/Design, Development, Testing, Deployment, Documentation
+5. Use emojis for phase names (🎨, 💻, 🧪, 🚀, 📚, 🔒, etc.)
+6. total_hours in each phase should equal the sum of task hours
+7. Overall total_hours should equal the sum of all phase hours
+8. Be specific about what each task involves
+9. Consider the full software development lifecycle
+
+Return ONLY the JSON object, no additional text or markdown formatting."""
+
+        # Call Groq API with llama model
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful project estimation assistant that provides accurate time estimates in JSON format. Always respond with valid JSON."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7,
+            max_tokens=2000
+        )
+        
+        # Parse the response
+        ai_response = response.choices[0].message.content.strip()
+        
+        # Remove markdown code blocks if present
+        if ai_response.startswith("```json"):
+            ai_response = ai_response[7:]
+        if ai_response.startswith("```"):
+            ai_response = ai_response[3:]
+        if ai_response.endswith("```"):
+            ai_response = ai_response[:-3]
+        
+        ai_response = ai_response.strip()
+        
+        # Parse JSON
+        estimation_data = json.loads(ai_response)
+        
+        # Validate structure
+        if "phases" not in estimation_data or "total_hours" not in estimation_data:
+            raise ValueError("Invalid estimation structure")
+        
+        # Ensure total_hours is an integer
+        estimation_data["total_hours"] = int(estimation_data["total_hours"])
+        
+        return estimation_data
+        
+    except json.JSONDecodeError as e:
+        print(f"Error parsing Groq API response: {str(e)}")
+        # Return a fallback estimation
+        return {
+            "phases": [
+                {
+                    "name": "🎨 Planning & Design",
+                    "tasks": [
+                        {"task": "Requirements gathering and analysis", "hours": 16},
+                        {"task": "System architecture design", "hours": 12},
+                        {"task": "UI/UX design and wireframes", "hours": 20}
+                    ],
+                    "total_hours": 48
+                },
+                {
+                    "name": "💻 Development",
+                    "tasks": [
+                        {"task": "Backend development and API creation", "hours": 80},
+                        {"task": "Frontend development", "hours": 60},
+                        {"task": "Database design and implementation", "hours": 24}
+                    ],
+                    "total_hours": 164
+                },
+                {
+                    "name": "🧪 Testing & QA",
+                    "tasks": [
+                        {"task": "Unit testing", "hours": 24},
+                        {"task": "Integration testing", "hours": 16},
+                        {"task": "Bug fixing and refinement", "hours": 20}
+                    ],
+                    "total_hours": 60
+                },
+                {
+                    "name": "🚀 Deployment",
+                    "tasks": [
+                        {"task": "Production environment setup", "hours": 8},
+                        {"task": "Deployment and configuration", "hours": 8},
+                        {"task": "Post-deployment monitoring", "hours": 4}
+                    ],
+                    "total_hours": 20
+                }
+            ],
+            "total_hours": 292
+        }
+    except Exception as e:
+        print(f"Error calling Groq API for estimation: {str(e)}")
+        raise Exception(f"Failed to generate estimation: {str(e)}. Please check your GROQ_API_KEY environment variable.")
+
+
+def generate_feature_suggestions(project_name: str, audit_text: str) -> list:
+    """
+    Generate AI-based feature suggestions from project audit using Groq
+    
+    Args:
+        project_name: Name of the project
+        audit_text: User's detailed project audit or current status
+        
+    Returns:
+        List of AI-generated feature suggestions
+    """
+    
+    try:
+        # Validate input
+        if not audit_text or not audit_text.strip():
+            return ["Please provide a project audit or current status to generate suggestions."]
+        
+        # Create the prompt for Groq
+        prompt = f"""You are a senior product manager and software architect analyzing a project to suggest new features and improvements.
+
+Project Name: {project_name}
+
+Current Project Audit/Status:
+{audit_text}
+
+Based on the project audit above, please suggest 5-8 specific, actionable new features or improvements that would add value to this project. Consider:
+
+1. User experience enhancements
+2. Technical improvements and optimizations
+3. New functionality that complements existing features
+4. Security and performance improvements
+5. Integration opportunities
+6. Analytics and monitoring capabilities
+7. Accessibility and usability improvements
+
+Provide your suggestions as a JSON array of strings. Each suggestion should be:
+- Specific and actionable
+- Clearly described in 1-2 sentences
+- Relevant to the project's current state
+- Prioritized by potential impact
+
+Return ONLY a JSON array in this exact format:
+[
+  "Feature suggestion 1 with clear description",
+  "Feature suggestion 2 with clear description",
+  "Feature suggestion 3 with clear description"
+]
+
+No additional text, just the JSON array."""
+
+        # Call Groq API with llama model
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful product management assistant that provides actionable feature suggestions based on project analysis. Always respond with valid JSON arrays."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.8,
+            max_tokens=1200
+        )
+        
+        # Parse the response
+        ai_response = response.choices[0].message.content.strip()
+        
+        # Remove markdown code blocks if present
+        if ai_response.startswith("```json"):
+            ai_response = ai_response[7:]
+        if ai_response.startswith("```"):
+            ai_response = ai_response[3:]
+        if ai_response.endswith("```"):
+            ai_response = ai_response[:-3]
+        
+        ai_response = ai_response.strip()
+        
+        # Parse JSON array
+        suggestions = json.loads(ai_response)
+        
+        # Validate that we got a list
+        if not isinstance(suggestions, list):
+            raise ValueError("AI response was not a list")
+        
+        # Ensure we have at least some suggestions
+        if len(suggestions) == 0:
+            return ["No specific suggestions could be generated. Please provide more details about your project."]
+        
+        return suggestions
+        
+    except json.JSONDecodeError as e:
+        print(f"Error parsing Groq API response: {str(e)}")
+        # Return a fallback suggestion
+        return [
+            "Add comprehensive logging and monitoring to track application performance",
+            "Implement user authentication and authorization system",
+            "Create an admin dashboard for system management",
+            "Add automated testing suite for critical features",
+            "Implement API rate limiting and security measures"
+        ]
+    except Exception as e:
+        print(f"Error calling Groq API for feature suggestions: {str(e)}")
+        raise Exception(f"Failed to generate feature suggestions: {str(e)}. Please check your GROQ_API_KEY environment variable.")

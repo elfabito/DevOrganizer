@@ -50,6 +50,31 @@ class ProjectStorageSQLite:
             )
         ''')
         
+        # Create feature suggestions table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS feature_suggestions (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                project_name TEXT NOT NULL,
+                audit_text TEXT NOT NULL,
+                suggestions TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            )
+        ''')
+        
+        # Create estimations table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS estimations (
+                id TEXT PRIMARY KEY,
+                project_name TEXT NOT NULL,
+                project_description TEXT NOT NULL,
+                phases TEXT NOT NULL,
+                total_hours INTEGER NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        ''')
+        
         # Create index for faster searches
         cursor.execute('''
             CREATE INDEX IF NOT EXISTS idx_created_at 
@@ -64,6 +89,16 @@ class ProjectStorageSQLite:
         cursor.execute('''
             CREATE INDEX IF NOT EXISTS idx_summaries_project 
             ON weekly_summaries(project_name)
+        ''')
+        
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_suggestions_project 
+            ON feature_suggestions(project_id)
+        ''')
+        
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_estimations_created_at 
+            ON estimations(created_at DESC)
         ''')
         
         conn.commit()
@@ -293,3 +328,227 @@ class ProjectStorageSQLite:
         
         conn.close()
         return count
+    
+    def save_feature_suggestions(self, project_id: str, project_name: str, audit_text: str, suggestions: List[str]) -> Dict:
+        """
+        Save feature suggestions for a project
+        
+        Args:
+            project_id: UUID of the project
+            project_name: Name of the project
+            audit_text: User's project audit/status text
+            suggestions: List of AI-generated feature suggestions
+            
+        Returns:
+            The saved feature suggestion dictionary
+        """
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.cursor()
+        
+        # Create new feature suggestion object
+        new_suggestion = {
+            "id": str(uuid.uuid4()),
+            "project_id": project_id,
+            "project_name": project_name,
+            "audit_text": audit_text,
+            "suggestions": suggestions,
+            "created_at": datetime.now().isoformat()
+        }
+        
+        # Insert into database
+        cursor.execute('''
+            INSERT INTO feature_suggestions (id, project_id, project_name, audit_text, suggestions, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            new_suggestion['id'],
+            new_suggestion['project_id'],
+            new_suggestion['project_name'],
+            new_suggestion['audit_text'],
+            json.dumps(new_suggestion['suggestions']),
+            new_suggestion['created_at']
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return new_suggestion
+    
+    def get_feature_suggestions_by_project(self, project_id: str) -> List[Dict]:
+        """
+        Get all feature suggestions for a specific project
+        
+        Args:
+            project_id: UUID of the project
+            
+        Returns:
+            List of feature suggestion dictionaries
+        """
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, project_id, project_name, audit_text, suggestions, created_at
+            FROM feature_suggestions
+            WHERE project_id = ?
+            ORDER BY created_at DESC
+        ''', (project_id,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        suggestions_list = []
+        for row in rows:
+            suggestions_list.append({
+                'id': row[0],
+                'project_id': row[1],
+                'project_name': row[2],
+                'audit_text': row[3],
+                'suggestions': json.loads(row[4]),
+                'created_at': row[5]
+            })
+        
+        return suggestions_list
+    
+    def get_latest_feature_suggestion(self, project_id: str) -> Optional[Dict]:
+        """
+        Get the most recent feature suggestion for a project
+        
+        Args:
+            project_id: UUID of the project
+            
+        Returns:
+            Feature suggestion dictionary or None if not found
+        """
+        suggestions = self.get_feature_suggestions_by_project(project_id)
+        return suggestions[0] if suggestions else None
+    
+    def save_estimation(self, project_name: str, project_description: str, phases: List[Dict], total_hours: int) -> Dict:
+        """
+        Save a project estimation
+        
+        Args:
+            project_name: Name of the project
+            project_description: Description of the project
+            phases: List of phase dictionaries with name, tasks, and hours
+            total_hours: Total estimated hours for the project
+            
+        Returns:
+            The saved estimation dictionary
+        """
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.cursor()
+        
+        # Create new estimation object
+        new_estimation = {
+            "id": str(uuid.uuid4()),
+            "project_name": project_name,
+            "project_description": project_description,
+            "phases": phases,
+            "total_hours": total_hours,
+            "created_at": datetime.now().isoformat()
+        }
+        
+        # Insert into database
+        cursor.execute('''
+            INSERT INTO estimations (id, project_name, project_description, phases, total_hours, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            new_estimation['id'],
+            new_estimation['project_name'],
+            new_estimation['project_description'],
+            json.dumps(new_estimation['phases']),
+            new_estimation['total_hours'],
+            new_estimation['created_at']
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return new_estimation
+    
+    def load_all_estimations(self) -> List[Dict]:
+        """
+        Load all estimations from database
+        
+        Returns:
+            List of estimation dictionaries
+        """
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, project_name, project_description, phases, total_hours, created_at
+            FROM estimations
+            ORDER BY created_at DESC
+        ''')
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        estimations = []
+        for row in rows:
+            estimations.append({
+                'id': row[0],
+                'project_name': row[1],
+                'project_description': row[2],
+                'phases': json.loads(row[3]),
+                'total_hours': row[4],
+                'created_at': row[5]
+            })
+        
+        return estimations
+    
+    def get_estimation_by_id(self, estimation_id: str) -> Optional[Dict]:
+        """
+        Get a specific estimation by its ID
+        
+        Args:
+            estimation_id: UUID of the estimation
+            
+        Returns:
+            Estimation dictionary or None if not found
+        """
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, project_name, project_description, phases, total_hours, created_at
+            FROM estimations
+            WHERE id = ?
+        ''', (estimation_id,))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                'id': row[0],
+                'project_name': row[1],
+                'project_description': row[2],
+                'phases': json.loads(row[3]),
+                'total_hours': row[4],
+                'created_at': row[5]
+            }
+        
+        return None
+    
+    def delete_estimation(self, estimation_id: str) -> bool:
+        """
+        Delete an estimation by ID
+        
+        Args:
+            estimation_id: UUID of the estimation to delete
+            
+        Returns:
+            True if deleted, False if not found
+        """
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM estimations WHERE id = ?', (estimation_id,))
+        
+        deleted = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        
+        return deleted

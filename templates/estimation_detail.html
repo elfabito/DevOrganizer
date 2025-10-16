@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}{{ estimation.project_name }} - Estimation{% endblock %}
+
+{% block header_title %}{{ estimation.project_name }} - Estimation{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('index') }}" class="btn btn-secondary">← Back to Home</a>
+<button onclick="deleteEstimation()" class="btn btn-danger">🗑️ Delete</button>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .estimation-header {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: var(--white);
+        padding: 32px;
+        border-radius: 12px;
+        margin-bottom: 32px;
+    }
+
+    .estimation-header h2 {
+        font-size: 32px;
+        margin-bottom: 12px;
+    }
+
+    .estimation-meta {
+        display: flex;
+        gap: 24px;
+        font-size: 14px;
+        opacity: 0.9;
+    }
+
+    .estimation-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .total-hours-box {
+        background: var(--white);
+        border: 3px solid var(--primary);
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .total-hours-box h3 {
+        font-size: 18px;
+        color: var(--gray);
+        margin-bottom: 8px;
+    }
+
+    .total-hours-value {
+        font-size: 48px;
+        font-weight: bold;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .description-box {
+        background: var(--light-gray);
+        padding: 24px;
+        border-radius: 12px;
+        margin-bottom: 32px;
+    }
+
+    .description-box h3 {
+        font-size: 18px;
+        color: var(--dark);
+        margin-bottom: 12px;
+    }
+
+    .description-text {
+        position: relative;
+    }
+
+    .description-text.collapsed {
+        max-height: 100px;
+        overflow: hidden;
+    }
+
+    .description-text.collapsed::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 40px;
+        background: linear-gradient(transparent, var(--light-gray));
+    }
+
+    .description-box p {
+        color: var(--dark);
+        line-height: 1.8;
+        margin: 0;
+    }
+
+    .read-more-btn {
+        margin-top: 12px;
+        background: none;
+        border: none;
+        color: var(--primary);
+        font-weight: 600;
+        cursor: pointer;
+        padding: 8px 0;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .read-more-btn:hover {
+        color: var(--secondary);
+        text-decoration: underline;
+    }
+
+    .phases-section {
+        margin-bottom: 32px;
+    }
+
+    .phases-section h3 {
+        font-size: 22px;
+        color: var(--dark);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .phase-card {
+        background: var(--white);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 24px;
+        transition: all 0.3s;
+    }
+
+    .phase-card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+    }
+
+    .phase-header {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: var(--white);
+        padding: 16px 20px;
+        font-weight: 600;
+        font-size: 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+
+    .phase-header:hover {
+        opacity: 0.9;
+    }
+
+    .phase-hours {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 15px;
+    }
+
+    .phase-tasks {
+        padding: 20px;
+        display: grid;
+        gap: 12px;
+    }
+
+    .task-item {
+        background: var(--light-gray);
+        padding: 16px 20px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s;
+    }
+
+    .task-item:hover {
+        background: #e8eaf0;
+        transform: translateX(4px);
+    }
+
+    .task-text {
+        flex: 1;
+        color: var(--dark);
+        font-size: 15px;
+        line-height: 1.5;
+    }
+
+    .task-hours {
+        background: var(--white);
+        color: var(--primary);
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+        margin-left: 16px;
+        flex-shrink: 0;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 12px;
+        margin-top: 32px;
+        padding-top: 32px;
+        border-top: 2px solid var(--border);
+    }
+
+    .toggle-icon {
+        transition: transform 0.3s;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="estimation-header">
+    <h2>⏱️ {{ estimation.project_name }}</h2>
+    <div class="estimation-meta">
+        <div class="estimation-meta-item">
+            <span>📅</span>
+            <span>Created: {{ estimation.created_at[:10] }}</span>
+        </div>
+        <div class="estimation-meta-item">
+            <span>🆔</span>
+            <span>ID: {{ estimation.id[:8] }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="total-hours-box">
+    <h3>Total Estimated Hours</h3>
+    <div class="total-hours-value">{{ estimation.total_hours }} hrs</div>
+    <p style="color: var(--gray); margin-top: 8px; font-size: 14px;">
+        Approximately {{ (estimation.total_hours / 8)|round|int }} working days
+    </p>
+</div>
+
+<div class="description-box">
+    <h3>📝 Project Description</h3>
+    <div class="description-text collapsed" id="descriptionText">
+        <p>{{ estimation.project_description }}</p>
+    </div>
+    <button class="read-more-btn" id="readMoreBtn" onclick="toggleDescription()">
+        👇 Read More
+    </button>
+</div>
+
+<div class="phases-section">
+    <h3>📋 Estimation Breakdown by Phase</h3>
+    
+    {% for phase in estimation.phases %}
+    <div class="phase-card">
+        <div class="phase-header" onclick="togglePhase(this)">
+            <span>{{ phase.name }}</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="phase-hours">{{ phase.total_hours }} hrs</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+        </div>
+        <div class="phase-tasks">
+            {% for task in phase.tasks %}
+            <div class="task-item">
+                <div class="task-text">{{ task.task }}</div>
+                <div class="task-hours">{{ task.hours }} hrs</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="action-buttons">
+    <a href="{{ url_for('index') }}" class="btn btn-primary">← Back to Home</a>
+    <button onclick="window.print()" class="btn btn-secondary">🖨️ Print Estimation</button>
+</div>
+
+<script>
+    // Toggle description Read More/Less
+    function toggleDescription() {
+        const descriptionText = document.getElementById('descriptionText');
+        const btn = document.getElementById('readMoreBtn');
+        
+        if (descriptionText.classList.contains('collapsed')) {
+            descriptionText.classList.remove('collapsed');
+            btn.innerHTML = '👆 Read Less';
+        } else {
+            descriptionText.classList.add('collapsed');
+            btn.innerHTML = '👇 Read More';
+        }
+    }
+
+    // Toggle phase collapse
+    function togglePhase(headerElement) {
+        const tasksDiv = headerElement.nextElementSibling;
+        const toggleIcon = headerElement.querySelector('.toggle-icon');
+        
+        if (tasksDiv.style.display === 'none') {
+            tasksDiv.style.display = 'grid';
+            toggleIcon.style.transform = 'rotate(0deg)';
+        } else {
+            tasksDiv.style.display = 'none';
+            toggleIcon.style.transform = 'rotate(-90deg)';
+        }
+    }
+
+    async function deleteEstimation() {
+        if (!confirm('Are you sure you want to delete this estimation? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/delete-estimation/{{ estimation.id }}', {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to delete estimation');
+            }
+
+            alert('Estimation deleted successfully');
+            window.location.href = '/';
+
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+</script>
+{% endblock %}

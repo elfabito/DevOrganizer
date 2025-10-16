@@ -139,6 +139,11 @@
         padding: 16px 20px;
         font-weight: 600;
         font-size: 16px;
+        transition: background 0.2s;
+    }
+
+    .category-header:hover {
+        background: var(--secondary);
     }
 
     .category-questions {
@@ -193,6 +198,11 @@
         display: flex;
         align-items: center;
         gap: 10px;
+        transition: opacity 0.2s;
+    }
+
+    .phase-header:hover {
+        opacity: 0.9;
     }
 
     .phase-tasks {
@@ -273,34 +283,6 @@
     .task-checkbox:hover {
         border-color: var(--primary);
         background: var(--light-gray);
-    }
-
-    .stats-bar {
-        display: flex;
-        gap: 24px;
-        margin-bottom: 32px;
-        flex-wrap: wrap;
-    }
-
-    .stat-card {
-        flex: 1;
-        min-width: 200px;
-        background: var(--light-gray);
-        padding: 20px;
-        border-radius: 8px;
-        text-align: center;
-    }
-
-    .stat-value {
-        font-size: 32px;
-        font-weight: bold;
-        color: var(--primary);
-        margin-bottom: 8px;
-    }
-
-    .stat-label {
-        color: var(--gray);
-        font-size: 14px;
     }
 
     .action-buttons {
@@ -398,23 +380,6 @@
     </button>
 </div>
 
-<div class="stats-bar">
-    <div class="stat-card">
-        <div class="stat-value">
-            {% set question_count = namespace(value=0) %}
-            {% for category, questions in project.ai_data.questions.items() %}
-                {% set question_count.value = question_count.value + questions|length %}
-            {% endfor %}
-            {{ question_count.value }}
-        </div>
-        <div class="stat-label">Technical Questions</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-value">{{ project.ai_data.questions|length }}</div>
-        <div class="stat-label">Question Categories</div>
-    </div>
-</div>
-
 <div class="section">
     <h3>💻 Recommended Tech Stack</h3>
     <div class="tech-stack-box">
@@ -438,6 +403,10 @@
             <span class="tab-icon">📝</span>
             Weekly Summary
         </button>
+        <button class="tab-button" onclick="switchTab('features')">
+            <span class="tab-icon">💡</span>
+            Suggest New Feature
+        </button>
     </div>
 
     <!-- Tab 1: Questions -->
@@ -448,7 +417,10 @@
                 {% for category, questions in project.ai_data.questions.items() %}
                     {% if questions|length > 0 %}
                     <div class="question-category">
-                        <div class="category-header">{{ category }}</div>
+                        <div class="category-header" onclick="toggleCategory(this)" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                            <span>{{ category }}</span>
+                            <span class="toggle-icon" style="transition: transform 0.3s;">▼</span>
+                        </div>
                         <div class="category-questions">
                             {% for question in questions %}
                             <div class="question-item">
@@ -472,8 +444,9 @@
                 {% if project.ai_data.clickup_plan is mapping and project.ai_data.clickup_plan.phases %}
                     {% for phase in project.ai_data.clickup_plan.phases %}
                     <div class="phase-card">
-                        <div class="phase-header">
-                            {{ phase.name }}
+                        <div class="phase-header" onclick="togglePhase(this)" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                            <span>{{ phase.name }}</span>
+                            <span class="toggle-icon" style="transition: transform 0.3s;">▼</span>
                         </div>
                         <div class="phase-tasks">
                             {% for task in phase.tasks %}
@@ -536,6 +509,86 @@
             </div>
         </div>
     </div>
+
+    <!-- Tab 4: Suggest New Feature -->
+    <div id="features-tab" class="tab-content">
+        <div class="section">
+            <h3>💡 Suggest New Feature</h3>
+            
+            <div style="background: var(--light-gray); padding: 24px; border-radius: 12px; margin-bottom: 24px;">
+                <h4 style="font-size: 20px; color: var(--dark); margin-bottom: 8px;">Current Audit from Your Project</h4>
+                <p style="font-size: 14px; color: var(--gray); margin-bottom: 20px;">
+                    (We recommend writing a complete audit or current status of your project here.)
+                </p>
+                
+                <div style="margin-bottom: 20px;">
+                    <label for="auditTextarea" style="display: block; font-weight: 600; color: var(--dark); margin-bottom: 8px;">
+                        Project Audit:
+                    </label>
+                    <textarea 
+                        id="auditTextarea" 
+                        rows="10" 
+                        placeholder="Describe the current state of your project, including completed features, current challenges, technical stack, user feedback, and any other relevant information..."
+                        style="width: 100%; padding: 16px; border: 2px solid var(--border); border-radius: 8px; font-size: 15px; font-family: inherit; line-height: 1.6; resize: vertical; min-height: 200px;"
+                    >{% if feature_suggestions %}{{ feature_suggestions.audit_text }}{% endif %}</textarea>
+                </div>
+                
+                <button 
+                    id="generateSuggestionsBtn" 
+                    class="btn btn-primary" 
+                    onclick="generateFeatureSuggestions()"
+                    style="width: 100%;"
+                >
+                    ✨ Generate Feature Suggestions
+                </button>
+            </div>
+
+            <!-- Loading indicator -->
+            <div id="suggestionsLoading" style="display: none; text-align: center; padding: 40px; background: var(--white); border-radius: 12px; border: 2px solid var(--border);">
+                <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+                <h4 style="color: var(--dark); margin-bottom: 8px;">Generating Suggestions...</h4>
+                <p style="color: var(--gray);">AI is analyzing your project audit</p>
+            </div>
+
+            <!-- Error message -->
+            <div id="suggestionsError" style="display: none; padding: 20px; background: #fee2e2; border: 2px solid #ef4444; border-radius: 8px; color: #dc2626; margin-bottom: 24px;">
+                <strong>Error:</strong> <span id="errorMessage"></span>
+            </div>
+
+            <!-- Suggestions results -->
+            <div id="suggestionsResults" style="{% if not feature_suggestions %}display: none;{% endif %}">
+                <h4 style="font-size: 18px; color: var(--dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                    <span>🎯</span>
+                    AI-Generated Feature Suggestions
+                </h4>
+                
+                <div id="suggestionsList" style="display: grid; gap: 16px;">
+                    {% if feature_suggestions and feature_suggestions.suggestions %}
+                        {% for suggestion in feature_suggestions.suggestions %}
+                        <div class="phase-card">
+                            <div style="padding: 20px; display: flex; align-items: start; gap: 16px;">
+                                <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">
+                                    {{ loop.index }}
+                                </div>
+                                <div style="flex: 1;">
+                                    <p style="color: var(--dark); font-size: 15px; line-height: 1.7; margin: 0;">
+                                        {{ suggestion }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+                {% if feature_suggestions %}
+                <div style="margin-top: 16px; padding: 16px; background: var(--light-gray); border-radius: 8px; font-size: 13px; color: var(--gray);">
+                    <strong>Generated:</strong> {{ feature_suggestions.created_at[:19].replace('T', ' ') }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="action-buttons">
@@ -575,6 +628,34 @@
         
         // Activate corresponding button
         event.target.closest('.tab-button').classList.add('active');
+    }
+
+    // Toggle question category
+    function toggleCategory(headerElement) {
+        const questionsDiv = headerElement.nextElementSibling;
+        const toggleIcon = headerElement.querySelector('.toggle-icon');
+        
+        if (questionsDiv.style.display === 'none') {
+            questionsDiv.style.display = 'block';
+            toggleIcon.style.transform = 'rotate(0deg)';
+        } else {
+            questionsDiv.style.display = 'none';
+            toggleIcon.style.transform = 'rotate(-90deg)';
+        }
+    }
+
+    // Toggle ClickUp phase
+    function togglePhase(headerElement) {
+        const tasksDiv = headerElement.nextElementSibling;
+        const toggleIcon = headerElement.querySelector('.toggle-icon');
+        
+        if (tasksDiv.style.display === 'none') {
+            tasksDiv.style.display = 'grid';
+            toggleIcon.style.transform = 'rotate(0deg)';
+        } else {
+            tasksDiv.style.display = 'none';
+            toggleIcon.style.transform = 'rotate(-90deg)';
+        }
     }
 
     async function deleteProject() {
@@ -624,6 +705,96 @@
 
         } catch (error) {
             alert('Error: ' + error.message);
+        }
+    }
+
+    async function generateFeatureSuggestions() {
+        const auditText = document.getElementById('auditTextarea').value.trim();
+        const generateBtn = document.getElementById('generateSuggestionsBtn');
+        const loadingDiv = document.getElementById('suggestionsLoading');
+        const errorDiv = document.getElementById('suggestionsError');
+        const resultsDiv = document.getElementById('suggestionsResults');
+        const suggestionsList = document.getElementById('suggestionsList');
+
+        // Validate input
+        if (!auditText) {
+            document.getElementById('errorMessage').textContent = 'Please provide a project audit or current status.';
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+            return;
+        }
+
+        try {
+            // Show loading, hide error and results
+            generateBtn.disabled = true;
+            generateBtn.textContent = '⏳ Generating...';
+            loadingDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+            resultsDiv.style.display = 'none';
+
+            // Call API
+            const response = await fetch('/generate-feature-suggestions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    project_id: '{{ project.id }}',
+                    project_name: '{{ project.name }}',
+                    audit_text: auditText
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to generate suggestions');
+            }
+
+            // Hide loading
+            loadingDiv.style.display = 'none';
+
+            // Display suggestions
+            if (data.suggestions && data.suggestions.length > 0) {
+                suggestionsList.innerHTML = '';
+                
+                data.suggestions.forEach((suggestion, index) => {
+                    const suggestionCard = document.createElement('div');
+                    suggestionCard.className = 'phase-card';
+                    suggestionCard.innerHTML = `
+                        <div style="padding: 20px; display: flex; align-items: start; gap: 16px;">
+                            <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">
+                                ${index + 1}
+                            </div>
+                            <div style="flex: 1;">
+                                <p style="color: var(--dark); font-size: 15px; line-height: 1.7; margin: 0;">
+                                    ${suggestion}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    suggestionsList.appendChild(suggestionCard);
+                });
+
+                // Add timestamp
+                const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+                const timestampDiv = suggestionsList.nextElementSibling;
+                if (timestampDiv) {
+                    timestampDiv.innerHTML = `<strong>Generated:</strong> ${now}`;
+                }
+
+                resultsDiv.style.display = 'block';
+            }
+
+        } catch (error) {
+            loadingDiv.style.display = 'none';
+            document.getElementById('errorMessage').textContent = error.message;
+            errorDiv.style.display = 'block';
+        } finally {
+            generateBtn.disabled = false;
+            generateBtn.textContent = '✨ Generate Feature Suggestions';
         }
     }
 </script>

@@ -5,7 +5,7 @@ A tool to help developers organize and plan new projects with AI assistance
 
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from storage import ProjectStorage
-from ai_service import generate_plan, generate_weekly_summary
+from ai_service import generate_plan, generate_weekly_summary, generate_feature_suggestions, generate_estimation
 from weekly_summary_storage import WeeklySummaryStorage
 import os
 
@@ -33,13 +33,16 @@ weekly_storage = WeeklySummaryStorage(STORAGE_FILE)
 @app.route('/')
 def index():
     """
-    Home page - displays list of all projects
+    Home page - displays list of all projects and estimations
     """
     projects = storage.load_all_projects()
     # Sort by creation date (newest first)
     projects.sort(key=lambda x: x.get('created_at', ''), reverse=True)
     
-    return render_template('index.html', projects=projects)
+    # Load estimations
+    estimations = storage.load_all_estimations()
+    
+    return render_template('index.html', projects=projects, estimations=estimations)
 
 
 @app.route('/create', methods=['GET'])
@@ -48,6 +51,14 @@ def create_project_form():
     Display the create project form
     """
     return render_template('create.html')
+
+
+@app.route('/create-estimation', methods=['GET'])
+def create_estimation_form():
+    """
+    Display the create estimation form
+    """
+    return render_template('estimation_create.html')
 
 
 @app.route('/generate-plan', methods=['POST'])
@@ -134,7 +145,13 @@ def view_project(project_id):
     all_summaries = weekly_storage.get_all_weekly_summaries()
     project_summaries = [s for s in all_summaries if s['project_name'] == project['name']]
     
-    return render_template('project_detail.html', project=project, weekly_summaries=project_summaries)
+    # Load feature suggestions for this project
+    feature_suggestions = storage.get_latest_feature_suggestion(project_id)
+    
+    return render_template('project_detail.html', 
+                         project=project, 
+                         weekly_summaries=project_summaries,
+                         feature_suggestions=feature_suggestions)
 
 
 @app.route('/delete-project/<project_id>', methods=['POST'])
@@ -304,6 +321,141 @@ def delete_weekly_summary(summary_id):
     except Exception as e:
         return jsonify({
             'error': f'Failed to delete weekly summary: {str(e)}'
+        }), 500
+
+
+@app.route('/generate-feature-suggestions', methods=['POST'])
+def generate_feature_suggestions_endpoint():
+    """
+    API endpoint to generate AI feature suggestions from project audit
+    """
+    try:
+        data = request.get_json()
+        project_id = data.get('project_id', '').strip()
+        project_name = data.get('project_name', '').strip()
+        audit_text = data.get('audit_text', '').strip()
+        
+        # Validate input
+        if not project_id or not project_name:
+            return jsonify({
+                'error': 'Project ID and name are required'
+            }), 400
+        
+        if not audit_text:
+            return jsonify({
+                'error': 'Project audit text is required'
+            }), 400
+        
+        # Generate AI feature suggestions
+        suggestions = generate_feature_suggestions(project_name, audit_text)
+        
+        # Save suggestions to database
+        saved_suggestion = storage.save_feature_suggestions(
+            project_id=project_id,
+            project_name=project_name,
+            audit_text=audit_text,
+            suggestions=suggestions
+        )
+        
+        return jsonify({
+            'success': True,
+            'suggestions': suggestions,
+            'suggestion_id': saved_suggestion['id']
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to generate feature suggestions: {str(e)}'
+        }), 500
+
+
+@app.route('/generate-estimation', methods=['POST'])
+def generate_estimation_endpoint():
+    """
+    API endpoint to generate AI project estimation
+    """
+    try:
+        data = request.get_json()
+        project_name = data.get('project_name', '').strip()
+        project_description = data.get('project_description', '').strip()
+        
+        # Validate input
+        if not project_name:
+            return jsonify({
+                'error': 'Project name is required'
+            }), 400
+        
+        if not project_description:
+            return jsonify({
+                'error': 'Project description is required'
+            }), 400
+        
+        # Generate AI estimation
+        estimation_data = generate_estimation(project_name, project_description)
+        
+        # Check for errors
+        if 'error' in estimation_data:
+            return jsonify({
+                'error': estimation_data['error']
+            }), 400
+        
+        # Save estimation to database
+        saved_estimation = storage.save_estimation(
+            project_name=project_name,
+            project_description=project_description,
+            phases=estimation_data['phases'],
+            total_hours=estimation_data['total_hours']
+        )
+        
+        return jsonify({
+            'success': True,
+            'estimation_id': saved_estimation['id'],
+            'phases': estimation_data['phases'],
+            'total_hours': estimation_data['total_hours']
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to generate estimation: {str(e)}'
+        }), 500
+
+
+@app.route('/estimation/<estimation_id>')
+def view_estimation(estimation_id):
+    """
+    View detailed information about a specific estimation
+    """
+    estimation = storage.get_estimation_by_id(estimation_id)
+    
+    if not estimation:
+        return render_template('error.html', 
+                             message='Estimation not found',
+                             back_url=url_for('index')), 404
+    
+    return render_template('estimation_detail.html', estimation=estimation)
+
+
+@app.route('/delete-estimation/<estimation_id>', methods=['POST'])
+def delete_estimation(estimation_id):
+    """
+    Delete an estimation by ID
+    """
+    try:
+        success = storage.delete_estimation(estimation_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Estimation deleted successfully'
+            })
+        else:
+            return jsonify({
+                'error': 'Estimation not found'
+            }), 404
+            
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to delete estimation: {str(e)}'
         }), 500
 
 

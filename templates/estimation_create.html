@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}Create Estimation - Dev Project Organizer{% endblock %}
+
+{% block header_title %}Create New Estimation{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('index') }}" class="btn btn-secondary">← Back to Home</a>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .create-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .intro-box {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: var(--white);
+        padding: 32px;
+        border-radius: 12px;
+        margin-bottom: 32px;
+        text-align: center;
+    }
+
+    .intro-box h2 {
+        font-size: 28px;
+        margin-bottom: 12px;
+    }
+
+    .intro-box p {
+        font-size: 16px;
+        opacity: 0.95;
+        line-height: 1.6;
+    }
+
+    .form-card {
+        background: var(--white);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        padding: 32px;
+        margin-bottom: 24px;
+    }
+
+    .form-group {
+        margin-bottom: 24px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: var(--dark);
+        margin-bottom: 8px;
+        font-size: 15px;
+    }
+
+    .form-group input,
+    .form-group textarea {
+        width: 100%;
+        padding: 14px 16px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-size: 15px;
+        font-family: inherit;
+        transition: all 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 200px;
+        line-height: 1.6;
+    }
+
+    .helper-text {
+        color: var(--gray);
+        font-size: 14px;
+        margin-top: 6px;
+        line-height: 1.5;
+    }
+
+    .tips-box {
+        background: var(--light-gray);
+        border-left: 4px solid var(--primary);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+    }
+
+    .tips-box h4 {
+        font-size: 16px;
+        color: var(--dark);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .tips-box ul {
+        margin: 0;
+        padding-left: 20px;
+        color: var(--dark);
+    }
+
+    .tips-box li {
+        margin-bottom: 8px;
+        line-height: 1.6;
+    }
+
+    .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .loading-content {
+        background: var(--white);
+        padding: 48px;
+        border-radius: 16px;
+        text-align: center;
+        max-width: 400px;
+    }
+
+    .loading-spinner {
+        font-size: 64px;
+        margin-bottom: 24px;
+        animation: spin 2s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .error-box {
+        display: none;
+        background: #fee2e2;
+        border: 2px solid #ef4444;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 24px;
+        color: #dc2626;
+    }
+
+    .error-box strong {
+        display: block;
+        margin-bottom: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="create-container">
+    <div class="intro-box">
+        <h2>⏱️ Project Estimation Generator</h2>
+        <p>Introduce the information about your project below. The AI will analyze it and generate a detailed estimation divided into phases with specific tasks and hour estimates.</p>
+    </div>
+
+    <!-- Error message -->
+    <div id="errorBox" class="error-box">
+        <strong>Error:</strong>
+        <span id="errorMessage"></span>
+    </div>
+
+    <div class="form-card">
+        <form id="estimationForm" onsubmit="generateEstimation(event)">
+            <div class="form-group">
+                <label for="projectName">Project Name *</label>
+                <input 
+                    type="text" 
+                    id="projectName" 
+                    name="projectName" 
+                    placeholder="e.g., E-commerce Platform, Task Management App, Social Network..." 
+                    required
+                    autofocus
+                >
+                <div class="helper-text">Give your project a descriptive name</div>
+            </div>
+
+            <div class="form-group">
+                <label for="projectInfo">Project Information *</label>
+                <textarea 
+                    id="projectInfo" 
+                    name="projectInfo" 
+                    placeholder="Describe your project in detail:&#10;&#10;• Main features and functionality&#10;• Technologies and frameworks (React, Node.js, etc.)&#10;• Complexity level (simple, medium, complex)&#10;• Team size and experience&#10;• Special requirements or constraints&#10;• Integrations needed&#10;• Target platforms (web, mobile, desktop)&#10;&#10;The more details you provide, the more accurate the estimation will be."
+                    required
+                ></textarea>
+                <div class="helper-text">Provide comprehensive information about your project for accurate estimates</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="generateBtn" style="width: 100%; font-size: 16px; padding: 14px;">
+                ✨ Generate Estimation
+            </button>
+        </form>
+    </div>
+
+    <div class="tips-box">
+        <h4>💡 Tips for Better Estimates</h4>
+        <ul>
+            <li><strong>Be specific:</strong> Mention exact features, not just "build a website"</li>
+            <li><strong>Include tech stack:</strong> React, Node.js, PostgreSQL, AWS, etc.</li>
+            <li><strong>Mention team size:</strong> Solo developer, 2-person team, 5+ developers</li>
+            <li><strong>Describe complexity:</strong> Simple CRUD, real-time features, AI integration</li>
+            <li><strong>List integrations:</strong> Payment gateways, third-party APIs, authentication</li>
+            <li><strong>Note constraints:</strong> Deadlines, budget, platform requirements</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-content">
+        <div class="loading-spinner">⏳</div>
+        <h3 style="color: var(--dark); margin-bottom: 12px;">Generating Estimation...</h3>
+        <p style="color: var(--gray);">AI is analyzing your project and calculating time estimates. This may take 5-15 seconds.</p>
+    </div>
+</div>
+
+<script>
+    async function generateEstimation(event) {
+        event.preventDefault();
+        
+        const projectName = document.getElementById('projectName').value.trim();
+        const projectInfo = document.getElementById('projectInfo').value.trim();
+        const generateBtn = document.getElementById('generateBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const errorBox = document.getElementById('errorBox');
+        
+        // Validate input
+        if (!projectName || !projectInfo) {
+            document.getElementById('errorMessage').textContent = 'Please fill in all required fields.';
+            errorBox.style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => {
+                errorBox.style.display = 'none';
+            }, 5000);
+            return;
+        }
+        
+        try {
+            // Show loading overlay
+            generateBtn.disabled = true;
+            generateBtn.textContent = '⏳ Generating...';
+            loadingOverlay.style.display = 'flex';
+            errorBox.style.display = 'none';
+            
+            // Call API
+            const response = await fetch('/generate-estimation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    project_name: projectName,
+                    project_description: projectInfo
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to generate estimation');
+            }
+            
+            // Redirect to estimation detail page
+            window.location.href = `/estimation/${data.estimation_id}`;
+            
+        } catch (error) {
+            loadingOverlay.style.display = 'none';
+            document.getElementById('errorMessage').textContent = error.message;
+            errorBox.style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            generateBtn.disabled = false;
+            generateBtn.textContent = '✨ Generate Estimation';
+        }
+    }
+</script>
+{% endblock %}
