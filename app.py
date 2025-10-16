@@ -206,7 +206,14 @@ def view_weekly_summary(summary_id):
     projects = storage.load_all_projects()
     project_names = [p['name'] for p in projects]
     
-    return render_template('weekly_summary.html', summary=summary, project_names=project_names)
+    # Find the project ID for the back button
+    project_id = None
+    for project in projects:
+        if project['name'] == summary['project_name']:
+            project_id = project['id']
+            break
+    
+    return render_template('weekly_summary.html', summary=summary, project_names=project_names, project_id=project_id)
 
 
 @app.route('/update-weekly-summary/<summary_id>', methods=['POST'])

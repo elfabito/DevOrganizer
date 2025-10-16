@@ -153,7 +153,11 @@
 <div class="action-buttons">
     <button class="btn btn-primary" onclick="saveNotes()">💾 Save Notes</button>
     <button class="btn btn-success" onclick="generateSummary()">🤖 Generate AI Summary</button>
+    {% if project_id %}
+    <button class="btn btn-secondary" onclick="window.location.href='{{ url_for('view_project', project_id=project_id) }}'">← Back to Project</button>
+    {% else %}
     <button class="btn btn-secondary" onclick="window.location.href='{{ url_for('index') }}'">← Back to Home</button>
+    {% endif %}
     <button class="btn" style="background: #ef4444; color: white;" onclick="deleteSummary()">🗑️ Delete</button>
 </div>
 
@@ -318,7 +322,11 @@
             showAlert('Weekly summary deleted successfully! Redirecting...', 'success');
             
             setTimeout(() => {
+                {% if project_id %}
+                window.location.href = '{{ url_for('view_project', project_id=project_id) }}';
+                {% else %}
                 window.location.href = '{{ url_for('index') }}';
+                {% endif %}
             }, 1500);
 
         } catch (error) {
