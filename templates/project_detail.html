@@ -434,6 +434,10 @@
             <span class="tab-icon">📋</span>
             ClickUp Task Plan
         </button>
+        <button class="tab-button" onclick="switchTab('weekly')">
+            <span class="tab-icon">📝</span>
+            Weekly Summary
+        </button>
     </div>
 
     <!-- Tab 1: Questions -->
@@ -486,6 +490,49 @@
                     <!-- Fallback for old text format -->
                     <div style="background: #1f2937; color: #f3f4f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8;">{{ project.ai_data.clickup_plan }}</div>
                 {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 3: Weekly Summary -->
+    <div id="weekly-tab" class="tab-content">
+        <div class="section">
+            <h3>📝 Weekly Summary</h3>
+            
+            {% if weekly_summaries and weekly_summaries|length > 0 %}
+                <!-- Existing Summaries -->
+                <div style="margin-bottom: 24px;">
+                    <h4 style="font-size: 16px; color: var(--gray); margin-bottom: 16px;">Previous Summaries</h4>
+                    <div style="display: grid; gap: 16px;">
+                        {% for summary in weekly_summaries %}
+                        <div class="phase-card" style="cursor: pointer;" onclick="window.location.href='/weekly-summary/{{ summary.id }}'">
+                            <div style="padding: 16px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <strong style="color: var(--dark);">Week of {{ summary.created_at[:10] }}</strong>
+                                    <span style="font-size: 12px; color: var(--gray);">{{ summary.created_at[:10] }}</span>
+                                </div>
+                                <div style="color: var(--gray); font-size: 14px; line-height: 1.6;">
+                                    {% if summary.ai_summary %}
+                                        {{ summary.ai_summary[:200] }}...
+                                    {% else %}
+                                        <em>No summary generated yet. Click to add notes.</em>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Create New Summary Button -->
+            <div style="text-align: center; padding: 40px 20px; background: var(--light-gray); border-radius: 12px; border: 2px dashed var(--border);">
+                <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                <h4 style="margin-bottom: 12px; color: var(--dark);">Track Your Weekly Progress</h4>
+                <p style="color: var(--gray); margin-bottom: 20px;">Create a new weekly summary to log your daily work and generate AI insights</p>
+                <button class="btn btn-primary" onclick="createWeeklySummaryForProject()">
+                    ➕ Create New Weekly Summary
+                </button>
             </div>
         </div>
     </div>
@@ -548,6 +595,32 @@
 
             alert('Project deleted successfully');
             window.location.href = '/';
+
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function createWeeklySummaryForProject() {
+        try {
+            const response = await fetch('/create-weekly-summary', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    project_name: '{{ project.name }}' 
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to create summary');
+            }
+
+            // Redirect to the new summary page
+            window.location.href = `/weekly-summary/${data.summary_id}`;
 
         } catch (error) {
             alert('Error: ' + error.message);

@@ -33,16 +33,13 @@ weekly_storage = WeeklySummaryStorage(STORAGE_FILE)
 @app.route('/')
 def index():
     """
-    Home page - displays list of all projects and weekly summaries
+    Home page - displays list of all projects
     """
     projects = storage.load_all_projects()
     # Sort by creation date (newest first)
     projects.sort(key=lambda x: x.get('created_at', ''), reverse=True)
     
-    # Load weekly summaries
-    weekly_summaries = weekly_storage.get_all_weekly_summaries()
-    
-    return render_template('index.html', projects=projects, weekly_summaries=weekly_summaries)
+    return render_template('index.html', projects=projects)
 
 
 @app.route('/create', methods=['GET'])
@@ -133,7 +130,11 @@ def view_project(project_id):
                              message='Project not found',
                              back_url=url_for('index')), 404
     
-    return render_template('project_detail.html', project=project)
+    # Load weekly summaries for this project
+    all_summaries = weekly_storage.get_all_weekly_summaries()
+    project_summaries = [s for s in all_summaries if s['project_name'] == project['name']]
+    
+    return render_template('project_detail.html', project=project, weekly_summaries=project_summaries)
 
 
 @app.route('/delete-project/<project_id>', methods=['POST'])
