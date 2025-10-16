@@ -39,10 +39,31 @@ class ProjectStorageSQLite:
             )
         ''')
         
+        # Create weekly summaries table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS weekly_summaries (
+                id TEXT PRIMARY KEY,
+                project_name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                week_notes TEXT NOT NULL,
+                ai_summary TEXT
+            )
+        ''')
+        
         # Create index for faster searches
         cursor.execute('''
             CREATE INDEX IF NOT EXISTS idx_created_at 
             ON projects(created_at DESC)
+        ''')
+        
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_summaries_created_at 
+            ON weekly_summaries(created_at DESC)
+        ''')
+        
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_summaries_project 
+            ON weekly_summaries(project_name)
         ''')
         
         conn.commit()

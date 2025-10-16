@@ -5,7 +5,8 @@ A tool to help developers organize and plan new projects with AI assistance
 
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from storage import ProjectStorage
-from ai_service import generate_plan
+from ai_service import generate_plan, generate_weekly_summary
+from weekly_summary_storage import WeeklySummaryStorage
 import os
 
 STORAGE_TYPE = 'sqlite'  # Opciones: 'json' o 'sqlite'
@@ -19,23 +20,29 @@ else:
     STORAGE_FILE = 'projects.json'
 
 from ai_service import generate_plan
+
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dev-project-organizer-secret-key-change-in-production'
 
 # Initialize storage
 storage = StorageClass(STORAGE_FILE)
+weekly_storage = WeeklySummaryStorage(STORAGE_FILE)
 
 
 @app.route('/')
 def index():
     """
-    Home page - displays list of all projects
+    Home page - displays list of all projects and weekly summaries
     """
     projects = storage.load_all_projects()
     # Sort by creation date (newest first)
     projects.sort(key=lambda x: x.get('created_at', ''), reverse=True)
-    return render_template('index.html', projects=projects)
+    
+    # Load weekly summaries
+    weekly_summaries = weekly_storage.get_all_weekly_summaries()
+    
+    return render_template('index.html', projects=projects, weekly_summaries=weekly_summaries)
 
 
 @app.route('/create', methods=['GET'])
@@ -150,6 +157,145 @@ def delete_project(project_id):
     except Exception as e:
         return jsonify({
             'error': f'Failed to delete project: {str(e)}'
+        }), 500
+
+
+@app.route('/create-weekly-summary', methods=['POST'])
+def create_weekly_summary():
+    """
+    Create a new weekly summary for a project
+    """
+    try:
+        data = request.get_json()
+        project_name = data.get('project_name', '').strip()
+        
+        if not project_name:
+            return jsonify({
+                'error': 'Project name is required'
+            }), 400
+        
+        # Create new weekly summary
+        summary = weekly_storage.create_weekly_summary(project_name)
+        
+        return jsonify({
+            'success': True,
+            'summary_id': summary['id'],
+            'message': 'Weekly summary created successfully!'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to create weekly summary: {str(e)}'
+        }), 500
+
+
+@app.route('/weekly-summary/<summary_id>')
+def view_weekly_summary(summary_id):
+    """
+    View and edit a specific weekly summary
+    """
+    summary = weekly_storage.get_weekly_summary_by_id(summary_id)
+    
+    if not summary:
+        return render_template('error.html', 
+                             message='Weekly summary not found',
+                             back_url=url_for('index')), 404
+    
+    # Get list of all projects for the dropdown
+    projects = storage.load_all_projects()
+    project_names = [p['name'] for p in projects]
+    
+    return render_template('weekly_summary.html', summary=summary, project_names=project_names)
+
+
+@app.route('/update-weekly-summary/<summary_id>', methods=['POST'])
+def update_weekly_summary(summary_id):
+    """
+    Update weekly summary notes
+    """
+    try:
+        data = request.get_json()
+        week_notes = data.get('week_notes')
+        
+        if not week_notes:
+            return jsonify({
+                'error': 'Week notes are required'
+            }), 400
+        
+        # Update the summary
+        success = weekly_storage.update_weekly_summary(summary_id, week_notes=week_notes)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Weekly notes saved successfully!'
+            })
+        else:
+            return jsonify({
+                'error': 'Weekly summary not found'
+            }), 404
+            
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to update weekly summary: {str(e)}'
+        }), 500
+
+
+@app.route('/generate-week-summary', methods=['POST'])
+def generate_week_summary():
+    """
+    API endpoint to generate AI summary from weekly notes
+    """
+    try:
+        data = request.get_json()
+        summary_id = data.get('summary_id', '').strip()
+        project_name = data.get('project_name', '').strip()
+        week_notes = data.get('week_notes', {})
+        
+        if not project_name or not week_notes:
+            return jsonify({
+                'error': 'Project name and week notes are required'
+            }), 400
+        
+        # Generate AI summary
+        ai_summary = generate_weekly_summary(project_name, week_notes)
+        
+        # Update the summary in database if summary_id provided
+        if summary_id:
+            weekly_storage.update_weekly_summary(summary_id, ai_summary=ai_summary)
+        
+        return jsonify({
+            'success': True,
+            'summary': ai_summary
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to generate summary: {str(e)}'
+        }), 500
+
+
+@app.route('/delete-weekly-summary/<summary_id>', methods=['POST'])
+def delete_weekly_summary(summary_id):
+    """
+    Delete a weekly summary by ID
+    """
+    try:
+        success = weekly_storage.delete_weekly_summary(summary_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Weekly summary deleted successfully'
+            })
+        else:
+            return jsonify({
+                'error': 'Weekly summary not found'
+            }), 404
+            
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to delete weekly summary: {str(e)}'
         }), 500
 
 

@@ -135,14 +135,101 @@
     }
 
     .task-plan {
+        display: grid;
+        gap: 20px;
+    }
+
+    .phase-card {
+        background: var(--white);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.3s;
+    }
+
+    .phase-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+
+    .phase-header {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 14px 18px;
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .phase-tasks {
+        padding: 16px;
+        display: grid;
+        gap: 10px;
+    }
+
+    .task-card {
         background: var(--light-gray);
-        padding: 20px;
-        border-radius: 8px;
-        white-space: pre-wrap;
-        font-family: 'Courier New', monospace;
-        font-size: 14px;
-        line-height: 1.8;
+        border-left: 4px solid #9ca3af;
+        padding: 12px 14px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.2s;
+    }
+
+    .task-card:hover {
+        background: #e8eaf0;
+        transform: translateX(4px);
+    }
+
+    .task-card.priority-high {
+        border-left-color: #ef4444;
+    }
+
+    .task-card.priority-medium {
+        border-left-color: #f59e0b;
+    }
+
+    .task-card.priority-low {
+        border-left-color: #10b981;
+    }
+
+    .task-priority {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 3px 7px;
+        border-radius: 4px;
+        flex-shrink: 0;
+    }
+
+    .task-priority.high {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .task-priority.medium {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .task-priority.low {
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .task-text {
+        flex: 1;
         color: var(--dark);
+        font-size: 14px;
+    }
+
+    .task-checkbox {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #9ca3af;
+        border-radius: 4px;
+        flex-shrink: 0;
     }
 
     .help-text {
@@ -177,6 +264,62 @@
     .step.completed {
         background: var(--success);
         color: var(--white);
+    }
+
+    /* Tab System */
+    .tabs-container {
+        margin-top: 24px;
+    }
+
+    .tabs-header {
+        display: flex;
+        gap: 8px;
+        border-bottom: 2px solid var(--border);
+        margin-bottom: 24px;
+    }
+
+    .tab-button {
+        padding: 12px 24px;
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: var(--gray);
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        position: relative;
+        bottom: -2px;
+    }
+
+    .tab-button:hover {
+        color: var(--primary);
+        background: var(--light-gray);
+    }
+
+    .tab-button.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+    }
+
+    .tab-content {
+        display: none;
+        animation: fadeIn 0.3s;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 </style>
 {% endblock %}
@@ -234,19 +377,29 @@
         <div class="tech-stack" id="techStack"></div>
     </div>
 
-    <div class="section">
-        <h3>🎯 Key Milestones</h3>
-        <div class="milestones" id="milestones"></div>
-    </div>
+    <div class="tabs-container">
+        <div class="tabs-header">
+            <button class="tab-button active" onclick="switchPreviewTab('questions')">
+                ❓ Technical Questions
+            </button>
+            <button class="tab-button" onclick="switchPreviewTab('clickup')">
+                📋 ClickUp Task Plan
+            </button>
+        </div>
 
-    <div class="section">
-        <h3>❓ Key Technical Questions</h3>
-        <div id="questionsContainer"></div>
-    </div>
+        <!-- Tab 1: Questions -->
+        <div id="preview-questions-tab" class="tab-content active">
+            <div class="section">
+                <div id="questionsContainer"></div>
+            </div>
+        </div>
 
-    <div class="section">
-        <h3>📋 ClickUp Task Plan</h3>
-        <div class="task-plan" id="taskPlan"></div>
+        <!-- Tab 2: ClickUp Plan -->
+        <div id="preview-clickup-tab" class="tab-content">
+            <div class="section">
+                <div class="task-plan" id="taskPlan"></div>
+            </div>
+        </div>
     </div>
 
     <div class="form-actions">
@@ -331,17 +484,29 @@
         }
     }
 
+    function switchPreviewTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('#aiResults .tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Remove active class from all buttons
+        document.querySelectorAll('#aiResults .tab-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Show selected tab
+        document.getElementById('preview-' + tabName + '-tab').classList.add('active');
+        
+        // Activate corresponding button
+        event.target.classList.add('active');
+    }
+
     function displayAIResults(aiData) {
         // Display tech stack
         document.getElementById('techStack').innerHTML = `
             <strong>Recommended Stack:</strong> ${aiData.tech_stack_summary}
         `;
-
-        // Display milestones
-        const milestonesHTML = aiData.key_milestones.map(milestone => `
-            <div class="milestone">${milestone}</div>
-        `).join('');
-        document.getElementById('milestones').innerHTML = milestonesHTML;
 
         // Display questions by category
         let questionsHTML = '';
@@ -360,7 +525,30 @@
         document.getElementById('questionsContainer').innerHTML = questionsHTML;
 
         // Display task plan
-        document.getElementById('taskPlan').textContent = aiData.clickup_plan;
+        let taskPlanHTML = '';
+        if (aiData.clickup_plan && aiData.clickup_plan.phases) {
+            // New card format
+            aiData.clickup_plan.phases.forEach(phase => {
+                taskPlanHTML += `
+                    <div class="phase-card">
+                        <div class="phase-header">${phase.name}</div>
+                        <div class="phase-tasks">
+                            ${phase.tasks.map(task => `
+                                <div class="task-card priority-${task.priority}">
+                                    <div class="task-checkbox"></div>
+                                    <div class="task-text">${task.task}</div>
+                                    <span class="task-priority ${task.priority}">${task.priority}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            // Fallback for old text format
+            taskPlanHTML = `<div style="background: #f3f4f6; padding: 20px; border-radius: 8px; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8; color: #1f2937;">${aiData.clickup_plan}</div>`;
+        }
+        document.getElementById('taskPlan').innerHTML = taskPlanHTML;
 
         // Show results
         document.getElementById('aiResults').classList.add('show');

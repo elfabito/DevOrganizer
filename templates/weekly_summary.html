@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Weekly Summary - {{ summary.project_name }}{% endblock %}
+
+{% block header_title %}📝 Weekly Summary{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .summary-header {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 32px;
+        border-radius: 12px;
+        margin-bottom: 32px;
+    }
+
+    .summary-header h2 {
+        font-size: 28px;
+        margin-bottom: 8px;
+    }
+
+    .summary-header p {
+        opacity: 0.9;
+        font-size: 14px;
+    }
+
+    .week-notes-container {
+        display: grid;
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+
+    .day-note {
+        background: var(--white);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        transition: all 0.3s;
+    }
+
+    .day-note:hover {
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .day-note h3 {
+        font-size: 18px;
+        color: var(--dark);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .day-note textarea {
+        width: 100%;
+        min-height: 150px;
+        padding: 12px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        line-height: 1.6;
+        resize: vertical;
+        transition: border-color 0.2s;
+    }
+
+    .day-note textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 32px;
+        flex-wrap: wrap;
+    }
+
+    .ai-summary-section {
+        background: var(--light-gray);
+        border-left: 4px solid var(--success);
+        padding: 24px;
+        border-radius: 8px;
+        margin-top: 32px;
+    }
+
+    .ai-summary-section h3 {
+        font-size: 20px;
+        color: var(--dark);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ai-summary-content {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        line-height: 1.8;
+        color: var(--dark);
+        white-space: pre-wrap;
+    }
+
+    .empty-summary {
+        color: var(--gray);
+        font-style: italic;
+        text-align: center;
+        padding: 40px;
+    }
+
+    .day-icons {
+        display: inline-block;
+        font-size: 20px;
+    }
+
+    .loading {
+        display: none;
+        text-align: center;
+        padding: 40px;
+    }
+
+    .loading.show {
+        display: block;
+    }
+
+    .spinner {
+        border: 4px solid var(--light-gray);
+        border-top: 4px solid var(--primary);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="alertContainer"></div>
+
+<div class="summary-header">
+    <h2>{{ summary.project_name }}</h2>
+    <p>Week of {{ summary.created_at[:10] }}</p>
+</div>
+
+<div class="action-buttons">
+    <button class="btn btn-primary" onclick="saveNotes()">💾 Save Notes</button>
+    <button class="btn btn-success" onclick="generateSummary()">🤖 Generate AI Summary</button>
+    <button class="btn btn-secondary" onclick="window.location.href='{{ url_for('index') }}'">← Back to Home</button>
+    <button class="btn" style="background: #ef4444; color: white;" onclick="deleteSummary()">🗑️ Delete</button>
+</div>
+
+<div class="week-notes-container">
+    <div class="day-note">
+        <h3><span class="day-icons">📅</span> Monday</h3>
+        <textarea id="monday" placeholder="What did you work on Monday? Add tasks, progress, blockers, decisions...">{{ summary.week_notes.Monday }}</textarea>
+    </div>
+
+    <div class="day-note">
+        <h3><span class="day-icons">📅</span> Tuesday</h3>
+        <textarea id="tuesday" placeholder="What did you work on Tuesday? Add tasks, progress, blockers, decisions...">{{ summary.week_notes.Tuesday }}</textarea>
+    </div>
+
+    <div class="day-note">
+        <h3><span class="day-icons">📅</span> Wednesday</h3>
+        <textarea id="wednesday" placeholder="What did you work on Wednesday? Add tasks, progress, blockers, decisions...">{{ summary.week_notes.Wednesday }}</textarea>
+    </div>
+
+    <div class="day-note">
+        <h3><span class="day-icons">📅</span> Thursday</h3>
+        <textarea id="thursday" placeholder="What did you work on Thursday? Add tasks, progress, blockers, decisions...">{{ summary.week_notes.Thursday }}</textarea>
+    </div>
+
+    <div class="day-note">
+        <h3><span class="day-icons">📅</span> Friday</h3>
+        <textarea id="friday" placeholder="What did you work on Friday? Add tasks, progress, blockers, decisions...">{{ summary.week_notes.Friday }}</textarea>
+    </div>
+</div>
+
+<div class="loading" id="loadingIndicator">
+    <div class="spinner"></div>
+    <p>Generating AI summary from your weekly notes...</p>
+</div>
+
+<div class="ai-summary-section">
+    <h3>🤖 AI-Generated Weekly Summary</h3>
+    <div class="ai-summary-content" id="aiSummaryContent">
+        {% if summary.ai_summary %}
+            {{ summary.ai_summary }}
+        {% else %}
+            <div class="empty-summary">No summary generated yet. Fill in your daily notes and click "Generate AI Summary".</div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    const summaryId = '{{ summary.id }}';
+    const projectName = '{{ summary.project_name }}';
+
+    function showAlert(message, type = 'info') {
+        const alertContainer = document.getElementById('alertContainer');
+        const alertClass = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : 'alert-info';
+        
+        alertContainer.innerHTML = `
+            <div class="alert ${alertClass} show">
+                ${message}
+            </div>
+        `;
+
+        setTimeout(() => {
+            alertContainer.innerHTML = '';
+        }, 5000);
+    }
+
+    async function saveNotes() {
+        const weekNotes = {
+            Monday: document.getElementById('monday').value,
+            Tuesday: document.getElementById('tuesday').value,
+            Wednesday: document.getElementById('wednesday').value,
+            Thursday: document.getElementById('thursday').value,
+            Friday: document.getElementById('friday').value
+        };
+
+        try {
+            const response = await fetch(`/update-weekly-summary/${summaryId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ week_notes: weekNotes })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to save notes');
+            }
+
+            showAlert('Weekly notes saved successfully!', 'success');
+
+        } catch (error) {
+            showAlert(error.message, 'error');
+        }
+    }
+
+    async function generateSummary() {
+        const weekNotes = {
+            Monday: document.getElementById('monday').value,
+            Tuesday: document.getElementById('tuesday').value,
+            Wednesday: document.getElementById('wednesday').value,
+            Thursday: document.getElementById('thursday').value,
+            Friday: document.getElementById('friday').value
+        };
+
+        // Check if there are any notes
+        const hasNotes = Object.values(weekNotes).some(note => note.trim() !== '');
+        if (!hasNotes) {
+            showAlert('Please add some notes before generating a summary', 'error');
+            return;
+        }
+
+        // Show loading
+        document.getElementById('loadingIndicator').classList.add('show');
+
+        try {
+            const response = await fetch('/generate-week-summary', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    summary_id: summaryId,
+                    project_name: projectName,
+                    week_notes: weekNotes
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to generate summary');
+            }
+
+            // Display the summary
+            document.getElementById('aiSummaryContent').innerHTML = data.summary;
+            showAlert('AI summary generated successfully!', 'success');
+
+        } catch (error) {
+            showAlert(error.message, 'error');
+        } finally {
+            document.getElementById('loadingIndicator').classList.remove('show');
+        }
+    }
+
+    async function deleteSummary() {
+        if (!confirm('Are you sure you want to delete this weekly summary? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/delete-weekly-summary/${summaryId}`, {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to delete summary');
+            }
+
+            showAlert('Weekly summary deleted successfully! Redirecting...', 'success');
+            
+            setTimeout(() => {
+                window.location.href = '{{ url_for('index') }}';
+            }, 1500);
+
+        } catch (error) {
+            showAlert(error.message, 'error');
+        }
+    }
+
+    // Auto-save notes every 30 seconds
+    setInterval(() => {
+        saveNotes();
+    }, 30000);
+</script>
+{% endblock %}
