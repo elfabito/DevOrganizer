@@ -219,6 +219,35 @@
     .toggle-icon {
         transition: transform 0.3s;
     }
+
+    .copy-success {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+        display: none;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .copy-success.show {
+        display: block;
+    }
 </style>
 {% endblock %}
 
@@ -281,7 +310,13 @@
 
 <div class="action-buttons">
     <a href="{{ url_for('index') }}" class="btn btn-primary">← Back to Home</a>
+    <button onclick="copyEstimationToClipboard()" class="btn btn-secondary">📋 Copy to Clipboard</button>
     <button onclick="window.print()" class="btn btn-secondary">🖨️ Print Estimation</button>
+</div>
+
+<!-- Copy success notification -->
+<div id="copySuccess" class="copy-success">
+    ✅ Estimation copied to clipboard!
 </div>
 
 <script>
@@ -311,6 +346,60 @@
             tasksDiv.style.display = 'none';
             toggleIcon.style.transform = 'rotate(-90deg)';
         }
+    }
+
+    function copyEstimationToClipboard() {
+        // Function to remove emojis and icons from text
+        function removeEmojis(text) {
+            // Remove emoji characters and common icon patterns
+            return text
+                .replace(/[\u{1F300}-\u{1F9FF}]/gu, '') // Emoticons
+                .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Misc symbols
+                .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Dingbats
+                .replace(/[\u{1F000}-\u{1F02F}]/gu, '') // Mahjong tiles
+                .replace(/[\u{1F0A0}-\u{1F0FF}]/gu, '') // Playing cards
+                .replace(/[\u{1F100}-\u{1F64F}]/gu, '') // Enclosed characters
+                .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport symbols
+                .replace(/[\u{1F900}-\u{1F9FF}]/gu, '') // Supplemental symbols
+                .replace(/[\u{FE00}-\u{FE0F}]/gu, '')   // Variation selectors
+                .replace(/[\u{200D}]/gu, '')             // Zero width joiner
+                .replace(/:\w+:/g, '')                   // :emoji_name: format
+                .trim();
+        }
+        
+        // Build the text content
+        const totalHours = {{ estimation.total_hours }};
+        
+        let text = 'ESTIMATION BREAKDOWN BY PHASE\n\n\n';
+        
+        {% for phase in estimation.phases %}
+        const phaseName{{ loop.index }} = removeEmojis('{{ phase.name|replace("'", "\\'") }}');
+        text += phaseName{{ loop.index }} + '\n';
+        text += '-'.repeat(50) + '\n';
+        text += 'Total Phase Hours: {{ phase.total_hours }} hrs\n\n';
+        text += 'Tasks:\n';
+        {% for task in phase.tasks %}
+        text += '  • {{ task.task|replace("\n", " ")|replace("'", "\\'") }} - {{ task.hours }} hrs\n';
+        {% endfor %}
+        text += '\n';
+        {% endfor %}
+        
+        text += '\nTotal Hours: ' + totalHours + ' hrs\n';
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(text).then(function() {
+            // Show success notification
+            const notification = document.getElementById('copySuccess');
+            notification.classList.add('show');
+            
+            // Hide after 3 seconds
+            setTimeout(function() {
+                notification.classList.remove('show');
+            }, 3000);
+        }).catch(function(err) {
+            alert('Failed to copy to clipboard. Please try again.');
+            console.error('Copy failed:', err);
+        });
     }
 
     async function deleteEstimation() {

@@ -160,6 +160,25 @@
         display: flex;
         align-items: flex-start;
         gap: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .question-item:hover {
+        background: #e8eaf0;
+        transform: translateX(4px);
+    }
+
+    .question-item:hover::after {
+        content: '📋 Click to copy';
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 12px;
+        color: var(--primary);
+        font-weight: 600;
     }
 
     .question-item:last-child {
@@ -213,18 +232,27 @@
 
     .task-card {
         background: var(--light-gray);
-        border-left: 4px solid var(--gray);
-        padding: 14px 16px;
-        border-radius: 6px;
+        padding: 16px 120px 16px 20px;
+        border-radius: 8px;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 16px;
         transition: all 0.2s;
+        cursor: pointer;
+        position: relative;
     }
 
     .task-card:hover {
         background: #e8eaf0;
         transform: translateX(4px);
+    }
+
+    .task-card:hover::after {
+        content: '📋';
+        position: absolute;
+        right: 100px;
+        font-size: 16px;
+        opacity: 0.7;
     }
 
     .task-card.priority-high {
@@ -246,6 +274,8 @@
         padding: 4px 8px;
         border-radius: 4px;
         flex-shrink: 0;
+        position: absolute;
+        right: 20px;
     }
 
     .task-priority.high {
@@ -344,13 +374,38 @@
             transform: translateY(10px);
         }
         to {
+            transform: translateX(0);
             opacity: 1;
-            transform: translateY(0);
         }
     }
 
-    .tab-icon {
-        margin-right: 8px;
+    .copy-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 10000;
+        display: none;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .copy-notification.show {
+        display: block;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
     }
 </style>
 {% endblock %}
@@ -423,7 +478,7 @@
                         </div>
                         <div class="category-questions">
                             {% for question in questions %}
-                            <div class="question-item">
+                            <div class="question-item" data-question="{{ question }}" onclick="copyToClipboard(this.dataset.question, 'Question');">
                                 <span class="question-icon">❓</span>
                                 <span>{{ question }}</span>
                             </div>
@@ -450,7 +505,7 @@
                         </div>
                         <div class="phase-tasks">
                             {% for task in phase.tasks %}
-                            <div class="task-card priority-{{ task.priority }}">
+                            <div class="task-card priority-{{ task.priority }}" onclick="copyToClipboard('{{ task.task|replace("'", "\\'") }}', 'Task')">
                                 <div class="task-checkbox"></div>
                                 <div class="task-text">{{ task.task }}</div>
                                 <span class="task-priority {{ task.priority }}">{{ task.priority }}</span>
@@ -478,7 +533,8 @@
                     <h4 style="font-size: 16px; color: var(--gray); margin-bottom: 16px;">Previous Summaries</h4>
                     <div style="display: grid; gap: 16px;">
                         {% for summary in weekly_summaries %}
-                        <div class="phase-card" style="cursor: pointer;" onclick="window.location.href='/weekly-summary/{{ summary.id }}'">
+                        <div class="phase-card" style="cursor: pointer;" onclick="window.location.href='/weekly-summary/{{ summary.id }}';">
+
                             <div style="padding: 16px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                     <strong style="color: var(--dark);">Week of {{ summary.created_at[:10] }}</strong>
@@ -596,7 +652,28 @@
     <a href="{{ url_for('create_project_form') }}" class="btn btn-secondary">➕ Create Another Project</a>
 </div>
 
+<!-- Copy notification -->
+<div id="copyNotification" class="copy-notification">
+    ✅ Copied to clipboard!
+</div>
+
 <script>
+    // Copy to clipboard function
+    function copyToClipboard(text, type) {
+        navigator.clipboard.writeText(text).then(() => {
+            const notification = document.getElementById('copyNotification');
+            notification.textContent = `✅ ${type} copied to clipboard!`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            alert('Failed to copy to clipboard');
+        });
+    }
+
     // Read more/less functionality
     function toggleBrief() {
         const briefText = document.getElementById('briefText');
