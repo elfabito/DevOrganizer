@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Error - Dev Project Organizer{% endblock %}
+
+{% block header_title %}Error{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .error-container {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .error-icon {
+        font-size: 80px;
+        margin-bottom: 24px;
+    }
+
+    .error-container h2 {
+        font-size: 28px;
+        color: var(--dark);
+        margin-bottom: 16px;
+    }
+
+    .error-container p {
+        color: var(--gray);
+        font-size: 16px;
+        margin-bottom: 32px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <div class="error-icon">⚠️</div>
+    <h2>Oops! Something went wrong</h2>
+    <p>{{ message }}</p>
+    <a href="{{ back_url }}" class="btn btn-primary">Go Back</a>
+</div>
+{% endblock %}

@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+
+{% block title %}Create Project - Dev Project Organizer{% endblock %}
+
+{% block header_title %}Create New Project{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .form-group {
+        margin-bottom: 24px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--dark);
+    }
+
+    .form-group input,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        transition: border-color 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 150px;
+        line-height: 1.6;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 32px;
+    }
+
+    .ai-results {
+        display: none;
+        margin-top: 32px;
+        padding-top: 32px;
+        border-top: 2px solid var(--border);
+    }
+
+    .ai-results.show {
+        display: block;
+    }
+
+    .section {
+        margin-bottom: 32px;
+    }
+
+    .section h3 {
+        font-size: 20px;
+        color: var(--dark);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .tech-stack {
+        background: var(--light-gray);
+        padding: 16px;
+        border-radius: 8px;
+        border-left: 4px solid var(--secondary);
+        margin-bottom: 24px;
+    }
+
+    .tech-stack strong {
+        color: var(--dark);
+    }
+
+    .questions-category {
+        margin-bottom: 24px;
+    }
+
+    .questions-category h4 {
+        font-size: 16px;
+        color: var(--dark);
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        background: var(--light-gray);
+        border-radius: 6px;
+    }
+
+    .questions-category ul {
+        list-style: none;
+        padding-left: 0;
+    }
+
+    .questions-category li {
+        padding: 10px 16px;
+        margin-bottom: 8px;
+        background: var(--white);
+        border-left: 3px solid var(--primary);
+        border-radius: 4px;
+        color: var(--dark);
+    }
+
+    .questions-category li::before {
+        content: "❓";
+        margin-right: 8px;
+    }
+
+    .milestones {
+        display: grid;
+        gap: 12px;
+    }
+
+    .milestone {
+        padding: 12px 16px;
+        background: var(--light-gray);
+        border-radius: 8px;
+        border-left: 4px solid var(--success);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .milestone::before {
+        content: "✅";
+        font-size: 20px;
+    }
+
+    .task-plan {
+        background: var(--light-gray);
+        padding: 20px;
+        border-radius: 8px;
+        white-space: pre-wrap;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        line-height: 1.8;
+        color: var(--dark);
+    }
+
+    .help-text {
+        font-size: 13px;
+        color: var(--gray);
+        margin-top: 4px;
+    }
+
+    .step-indicator {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 32px;
+        padding: 16px;
+        background: var(--light-gray);
+        border-radius: 8px;
+    }
+
+    .step {
+        flex: 1;
+        text-align: center;
+        padding: 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .step.active {
+        background: var(--primary);
+        color: var(--white);
+    }
+
+    .step.completed {
+        background: var(--success);
+        color: var(--white);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="step-indicator">
+    <div class="step active" id="step1">1. Project Details</div>
+    <div class="step" id="step2">2. AI Analysis</div>
+    <div class="step" id="step3">3. Save Project</div>
+</div>
+
+<div id="alertContainer"></div>
+
+<form id="projectForm">
+    <div class="form-group">
+        <label for="projectName">Project Name *</label>
+        <input 
+            type="text" 
+            id="projectName" 
+            name="name" 
+            required 
+            placeholder="e.g., E-commerce Platform"
+            maxlength="100"
+        >
+        <div class="help-text">Give your project a clear, descriptive name</div>
+    </div>
+
+    <div class="form-group">
+        <label for="projectDescription">Project Description *</label>
+        <textarea 
+            id="projectDescription" 
+            name="description" 
+            required 
+            placeholder="Describe your project in detail. Include the purpose, key features, target users, and any technical requirements you have in mind..."
+        ></textarea>
+        <div class="help-text">The more detailed your description, the better the AI analysis will be</div>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" class="btn btn-primary" onclick="generatePlan()">
+            🤖 Generate AI Analysis
+        </button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+<div class="loading" id="loadingIndicator">
+    <div class="spinner"></div>
+    <p>Analyzing your project and generating recommendations...</p>
+</div>
+
+<div class="ai-results" id="aiResults">
+    <div class="section">
+        <h3>💡 Recommended Tech Stack</h3>
+        <div class="tech-stack" id="techStack"></div>
+    </div>
+
+    <div class="section">
+        <h3>🎯 Key Milestones</h3>
+        <div class="milestones" id="milestones"></div>
+    </div>
+
+    <div class="section">
+        <h3>❓ Key Technical Questions</h3>
+        <div id="questionsContainer"></div>
+    </div>
+
+    <div class="section">
+        <h3>📋 ClickUp Task Plan</h3>
+        <div class="task-plan" id="taskPlan"></div>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" class="btn btn-success" onclick="saveProject()">
+            💾 Save Project
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="regeneratePlan()">
+            🔄 Regenerate Analysis
+        </button>
+    </div>
+</div>
+
+<script>
+    let currentAIData = null;
+
+    function showAlert(message, type = 'info') {
+        const alertContainer = document.getElementById('alertContainer');
+        const alertClass = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : 'alert-info';
+        
+        alertContainer.innerHTML = `
+            <div class="alert ${alertClass} show">
+                ${message}
+            </div>
+        `;
+
+        setTimeout(() => {
+            alertContainer.innerHTML = '';
+        }, 5000);
+    }
+
+    function updateSteps(currentStep) {
+        const steps = ['step1', 'step2', 'step3'];
+        steps.forEach((stepId, index) => {
+            const step = document.getElementById(stepId);
+            step.classList.remove('active', 'completed');
+            
+            if (index < currentStep - 1) {
+                step.classList.add('completed');
+            } else if (index === currentStep - 1) {
+                step.classList.add('active');
+            }
+        });
+    }
+
+    async function generatePlan() {
+        const name = document.getElementById('projectName').value.trim();
+        const description = document.getElementById('projectDescription').value.trim();
+
+        if (!name || !description) {
+            showAlert('Please fill in both project name and description', 'error');
+            return;
+        }
+
+        // Show loading
+        document.getElementById('loadingIndicator').classList.add('show');
+        document.getElementById('aiResults').classList.remove('show');
+        updateSteps(2);
+
+        try {
+            const response = await fetch('/generate-plan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name, description })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to generate plan');
+            }
+
+            currentAIData = data.ai_data;
+            displayAIResults(data.ai_data);
+            showAlert('AI analysis generated successfully! Review the results below.', 'success');
+
+        } catch (error) {
+            showAlert(error.message, 'error');
+        } finally {
+            document.getElementById('loadingIndicator').classList.remove('show');
+        }
+    }
+
+    function displayAIResults(aiData) {
+        // Display tech stack
+        document.getElementById('techStack').innerHTML = `
+            <strong>Recommended Stack:</strong> ${aiData.tech_stack_summary}
+        `;
+
+        // Display milestones
+        const milestonesHTML = aiData.key_milestones.map(milestone => `
+            <div class="milestone">${milestone}</div>
+        `).join('');
+        document.getElementById('milestones').innerHTML = milestonesHTML;
+
+        // Display questions by category
+        let questionsHTML = '';
+        for (const [category, questions] of Object.entries(aiData.questions)) {
+            if (questions.length > 0) {
+                questionsHTML += `
+                    <div class="questions-category">
+                        <h4>${category}</h4>
+                        <ul>
+                            ${questions.map(q => `<li>${q}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+        }
+        document.getElementById('questionsContainer').innerHTML = questionsHTML;
+
+        // Display task plan
+        document.getElementById('taskPlan').textContent = aiData.clickup_plan;
+
+        // Show results
+        document.getElementById('aiResults').classList.add('show');
+        
+        // Scroll to results
+        document.getElementById('aiResults').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function saveProject() {
+        if (!currentAIData) {
+            showAlert('Please generate AI analysis first', 'error');
+            return;
+        }
+
+        const name = document.getElementById('projectName').value.trim();
+        const brief = document.getElementById('projectDescription').value.trim();
+
+        updateSteps(3);
+
+        try {
+            const response = await fetch('/save-project', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name,
+                    brief,
+                    ai_data: currentAIData
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to save project');
+            }
+
+            showAlert('Project saved successfully! Redirecting...', 'success');
+            
+            setTimeout(() => {
+                window.location.href = `/project/${data.project_id}`;
+            }, 1500);
+
+        } catch (error) {
+            showAlert(error.message, 'error');
+            updateSteps(2);
+        }
+    }
+
+    function regeneratePlan() {
+        currentAIData = null;
+        document.getElementById('aiResults').classList.remove('show');
+        updateSteps(1);
+        showAlert('You can now modify the project details and regenerate the analysis', 'info');
+    }
+</script>
+{% endblock %}

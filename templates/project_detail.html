@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }} - Dev Project Organizer{% endblock %}
+
+{% block header_title %}{{ project.name }}{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('index') }}" class="btn btn-secondary">← Back to Projects</a>
+<button onclick="deleteProject()" class="btn btn-danger">🗑️ Delete</button>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .project-header {
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: var(--white);
+        padding: 32px;
+        border-radius: 12px;
+        margin-bottom: 32px;
+    }
+
+    .project-header h2 {
+        font-size: 32px;
+        margin-bottom: 12px;
+    }
+
+    .project-meta {
+        display: flex;
+        gap: 24px;
+        font-size: 14px;
+        opacity: 0.9;
+    }
+
+    .project-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .project-brief {
+        background: var(--light-gray);
+        padding: 24px;
+        border-radius: 8px;
+        margin-bottom: 32px;
+        line-height: 1.8;
+        color: var(--dark);
+    }
+
+    .project-brief h3 {
+        font-size: 18px;
+        margin-bottom: 12px;
+        color: var(--dark);
+    }
+
+    .section {
+        margin-bottom: 40px;
+    }
+
+    .section h3 {
+        font-size: 22px;
+        color: var(--dark);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .tech-stack-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: var(--white);
+        padding: 24px;
+        border-radius: 12px;
+        margin-bottom: 32px;
+        font-size: 16px;
+        line-height: 1.6;
+    }
+
+    .tech-stack-box strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        opacity: 0.9;
+    }
+
+    .milestones-grid {
+        display: grid;
+        gap: 16px;
+    }
+
+    .milestone-card {
+        background: var(--white);
+        border: 2px solid var(--border);
+        border-left: 6px solid var(--success);
+        padding: 16px 20px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: all 0.2s;
+    }
+
+    .milestone-card:hover {
+        border-color: var(--success);
+        box-shadow: var(--shadow);
+        transform: translateX(4px);
+    }
+
+    .milestone-number {
+        background: var(--success);
+        color: var(--white);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        flex-shrink: 0;
+    }
+
+    .milestone-text {
+        flex: 1;
+        color: var(--dark);
+        font-size: 15px;
+    }
+
+    .questions-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .question-category {
+        background: var(--white);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .category-header {
+        background: var(--primary);
+        color: var(--white);
+        padding: 16px 20px;
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .category-questions {
+        padding: 20px;
+    }
+
+    .question-item {
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        background: var(--light-gray);
+        border-radius: 6px;
+        border-left: 3px solid var(--primary);
+        color: var(--dark);
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .question-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .question-icon {
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .task-plan-box {
+        background: #1f2937;
+        color: #f3f4f6;
+        padding: 24px;
+        border-radius: 12px;
+        white-space: pre-wrap;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        line-height: 1.8;
+        overflow-x: auto;
+    }
+
+    .stats-bar {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 32px;
+        flex-wrap: wrap;
+    }
+
+    .stat-card {
+        flex: 1;
+        min-width: 200px;
+        background: var(--light-gray);
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 32px;
+        font-weight: bold;
+        color: var(--primary);
+        margin-bottom: 8px;
+    }
+
+    .stat-label {
+        color: var(--gray);
+        font-size: 14px;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 12px;
+        margin-top: 32px;
+        padding-top: 32px;
+        border-top: 2px solid var(--border);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="project-header">
+    <h2>{{ project.name }}</h2>
+    <div class="project-meta">
+        <div class="project-meta-item">
+            <span>📅</span>
+            <span>Created: {{ project.created_at[:10] }}</span>
+        </div>
+        <div class="project-meta-item">
+            <span>🆔</span>
+            <span>ID: {{ project.id[:8] }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="project-brief">
+    <h3>📝 Project Description</h3>
+    <p>{{ project.brief }}</p>
+</div>
+
+<div class="stats-bar">
+    <div class="stat-card">
+        <div class="stat-value">{{ project.ai_data.key_milestones|length }}</div>
+        <div class="stat-label">Key Milestones</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">
+            {% set question_count = namespace(value=0) %}
+            {% for category, questions in project.ai_data.questions.items() %}
+                {% set question_count.value = question_count.value + questions|length %}
+            {% endfor %}
+            {{ question_count.value }}
+        </div>
+        <div class="stat-label">Technical Questions</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ project.ai_data.questions|length }}</div>
+        <div class="stat-label">Question Categories</div>
+    </div>
+</div>
+
+<div class="section">
+    <h3>💻 Recommended Tech Stack</h3>
+    <div class="tech-stack-box">
+        <strong>AI Recommendation:</strong>
+        {{ project.ai_data.tech_stack_summary }}
+    </div>
+</div>
+
+<div class="section">
+    <h3>🎯 Key Milestones</h3>
+    <div class="milestones-grid">
+        {% for milestone in project.ai_data.key_milestones %}
+        <div class="milestone-card">
+            <div class="milestone-number">{{ loop.index }}</div>
+            <div class="milestone-text">{{ milestone }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="section">
+    <h3>❓ Key Technical Questions</h3>
+    <div class="questions-grid">
+        {% for category, questions in project.ai_data.questions.items() %}
+            {% if questions|length > 0 %}
+            <div class="question-category">
+                <div class="category-header">{{ category }}</div>
+                <div class="category-questions">
+                    {% for question in questions %}
+                    <div class="question-item">
+                        <span class="question-icon">❓</span>
+                        <span>{{ question }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+
+<div class="section">
+    <h3>📋 ClickUp Task Plan</h3>
+    <div class="task-plan-box">{{ project.ai_data.clickup_plan }}</div>
+</div>
+
+<div class="action-buttons">
+    <a href="{{ url_for('index') }}" class="btn btn-primary">← Back to All Projects</a>
+    <a href="{{ url_for('create_project_form') }}" class="btn btn-secondary">➕ Create Another Project</a>
+</div>
+
+<script>
+    async function deleteProject() {
+        if (!confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/delete-project/{{ project.id }}', {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to delete project');
+            }
+
+            alert('Project deleted successfully');
+            window.location.href = '/';
+
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Dev Project Organizer{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('create_project_form') }}" class="btn btn-primary">➕ Create Project</a>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .projects-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 24px;
+        margin-top: 24px;
+    }
+
+    .project-card {
+        background: var(--white);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+
+    .project-card:hover {
+        border-color: var(--primary);
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-4px);
+    }
+
+    .project-card h3 {
+        font-size: 20px;
+        color: var(--dark);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .project-card h3::before {
+        content: "📁";
+        font-size: 24px;
+    }
+
+    .project-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--gray);
+        font-size: 14px;
+        margin-bottom: 16px;
+    }
+
+    .project-meta::before {
+        content: "📅";
+    }
+
+    .project-brief {
+        color: var(--gray);
+        font-size: 14px;
+        line-height: 1.6;
+        margin-bottom: 16px;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .project-stats {
+        display: flex;
+        gap: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--gray);
+    }
+
+    .stat {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+    }
+
+    .empty-state-icon {
+        font-size: 80px;
+        margin-bottom: 24px;
+    }
+
+    .empty-state h2 {
+        font-size: 24px;
+        color: var(--dark);
+        margin-bottom: 12px;
+    }
+
+    .empty-state p {
+        color: var(--gray);
+        margin-bottom: 24px;
+    }
+
+    .page-header {
+        margin-bottom: 32px;
+    }
+
+    .page-header h2 {
+        font-size: 24px;
+        color: var(--dark);
+        margin-bottom: 8px;
+    }
+
+    .page-header p {
+        color: var(--gray);
+        font-size: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Your Projects</h2>
+    <p>Manage and organize your development projects with AI-powered planning</p>
+</div>
+
+{% if projects %}
+    <div class="projects-grid">
+        {% for project in projects %}
+        <div class="project-card" onclick="window.location.href='{{ url_for('view_project', project_id=project.id) }}'">
+            <h3>{{ project.name }}</h3>
+            <div class="project-meta">
+                {{ project.created_at[:10] }}
+            </div>
+            <div class="project-brief">
+                {{ project.brief }}
+            </div>
+            <div class="project-stats">
+                <div class="stat">
+                    <span>📋</span>
+                    <span>{{ project.ai_data.key_milestones|length }} milestones</span>
+                </div>
+                <div class="stat">
+                    <span>❓</span>
+                    <span>
+                        {% set question_count = namespace(value=0) %}
+                        {% for category, questions in project.ai_data.questions.items() %}
+                            {% set question_count.value = question_count.value + questions|length %}
+                        {% endfor %}
+                        {{ question_count.value }} questions
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">📂</div>
+        <h2>No Projects Yet</h2>
+        <p>Start organizing your development work by creating your first project</p>
+        <a href="{{ url_for('create_project_form') }}" class="btn btn-primary">➕ Create Your First Project</a>
+    </div>
+{% endif %}
+{% endblock %}

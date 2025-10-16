@@ -1,0 +1,103 @@
+========================================
+CÓMO CONFIGURAR TU API KEY DE GROQ
+========================================
+
+PASO 1: Obtener tu API Key (100% GRATIS)
+------------------------------------------
+1. Ve a: https://console.groq.com/keys
+2. Crea una cuenta (gratis, sin tarjeta de crédito)
+3. Haz clic en "Create API Key"
+4. Copia la clave (empieza con "gsk_...")
+
+PASO 2: Configurar la API Key
+------------------------------
+
+OPCIÓN A - Variable de Entorno (RECOMENDADO)
+---------------------------------------------
+En PowerShell:
+    $env:GROQ_API_KEY="gsk-tu-clave-aqui"
+
+En CMD:
+    set GROQ_API_KEY=gsk-tu-clave-aqui
+
+Para hacerlo permanente en Windows:
+1. Busca "Variables de entorno" en el menú inicio
+2. Haz clic en "Variables de entorno"
+3. En "Variables de usuario", haz clic en "Nueva"
+4. Nombre: GROQ_API_KEY
+5. Valor: gsk-tu-clave-aqui
+6. Aceptar y reinicia PowerShell/CMD
+
+
+OPCIÓN B - Archivo .env
+------------------------
+1. Copia el archivo .env.example a .env:
+   copy .env.example .env
+
+2. Abre .env con un editor de texto
+
+3. Reemplaza "your-api-key-here" con tu API key real:
+   GROQ_API_KEY=gsk-tu-clave-aqui
+
+4. Guarda el archivo
+
+
+OPCIÓN C - Directamente en el código
+-------------------------------------
+1. Abre ai_service.py con un editor de texto
+
+2. En la línea 18, reemplaza:
+   client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+   
+   Por:
+   client = Groq(api_key="gsk-tu-clave-aqui")
+
+3. Guarda el archivo
+
+⚠️ ADVERTENCIA: Esta opción NO es segura si compartes el código
+
+
+PASO 3: Verificar la Configuración
+-----------------------------------
+1. Ejecuta: python app.py
+2. Si ves el mensaje de inicio sin errores, ¡está configurado!
+3. Abre http://127.0.0.1:5000 en tu navegador
+4. Crea un proyecto y prueba "Generate AI Analysis"
+
+
+SOLUCIÓN DE PROBLEMAS
+----------------------
+❌ Error: "GROQ_API_KEY not set"
+   → La variable de entorno no está configurada
+   → Usa una de las opciones anteriores
+
+❌ Error: "Invalid API key" o "Authentication failed"
+   → Tu API key es incorrecta
+   → Verifica en https://console.groq.com/keys
+
+❌ Error: "Rate limit exceeded"
+   → Has superado el límite gratuito (muy generoso)
+   → Espera unos minutos o crea otra cuenta
+
+
+COSTOS
+------
+¡GROQ ES 100% GRATIS!
+
+Modelo: Llama 3.3 70B (usado por defecto)
+- ✅ Sin costo
+- ✅ Sin tarjeta de crédito
+- ✅ Límites muy generosos
+- ✅ Ultra rápido (el más rápido del mercado)
+
+Para más info: https://groq.com
+
+
+¿NECESITAS AYUDA?
+-----------------
+- Documentación completa: README.md
+- Guía rápida en español: INICIO_RAPIDO.md
+- Groq Console: https://console.groq.com
+- Groq Docs: https://console.groq.com/docs
+
+========================================
