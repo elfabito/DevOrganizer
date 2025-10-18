@@ -687,6 +687,76 @@ def internal_error(error):
                          back_url=url_for('index')), 500
 
 
+@app.route('/api/projects/<project_id>/section-states', methods=['GET'])
+def get_section_states(project_id):
+    """
+    Get all section states for a project
+    """
+    try:
+        print(f"Fetching section states for project: {project_id}")
+        section_states = storage.get_section_states(project_id)
+        print(f"Retrieved section states: {section_states}")
+        
+        if section_states is None:
+            print("No section states found, returning empty dict")
+            section_states = {}
+            
+        return jsonify({
+            'status': 'success',
+            'section_states': section_states
+        })
+        
+    except Exception as e:
+        error_msg = f'Failed to load section states: {str(e)}'
+        print(error_msg)
+        return jsonify({
+            'status': 'error',
+            'message': error_msg,
+            'error_type': type(e).__name__
+        }), 500
+
+@app.route('/api/projects/<project_id>/section-states/<section_id>', methods=['POST'])
+def save_section_state(project_id, section_id):
+    """
+    Save the state of a section for a project
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'No data provided in request'
+            }), 400
+            
+        is_expanded = data.get('is_expanded', False)
+        
+        print(f"Saving section state - Project: {project_id}, Section: {section_id}, Expanded: {is_expanded}")
+        
+        success = storage.save_section_state(project_id, section_id, is_expanded)
+        
+        if success:
+            print("Section state saved successfully")
+            return jsonify({
+                'status': 'success',
+                'message': 'Section state saved successfully'
+            })
+        else:
+            error_msg = 'Failed to save section state to database'
+            print(error_msg)
+            return jsonify({
+                'status': 'error',
+                'message': error_msg
+            }), 500
+            
+    except Exception as e:
+        error_msg = f'Failed to save section state: {str(e)}'
+        print(error_msg)
+        return jsonify({
+            'status': 'error',
+            'message': error_msg,
+            'error_type': type(e).__name__
+        }), 500
+
 if __name__ == '__main__':
     # Ensure templates directory exists
     os.makedirs('templates', exist_ok=True)

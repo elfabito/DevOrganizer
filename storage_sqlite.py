@@ -50,6 +50,18 @@ class ProjectStorageSQLite:
             )
         ''')
         
+        # Create section states table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS section_states (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                section_id TEXT NOT NULL,
+                is_expanded BOOLEAN NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(project_id, section_id)
+            )
+        ''')
+        
         # Create feature suggestions table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS feature_suggestions (
@@ -99,6 +111,17 @@ class ProjectStorageSQLite:
         cursor.execute('''
             CREATE INDEX IF NOT EXISTS idx_estimations_created_at 
             ON estimations(created_at DESC)
+        ''')
+        
+        # Add index for section_states queries
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_section_states_project 
+            ON section_states(project_id)
+        ''')
+        
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_section_states_updated 
+            ON section_states(updated_at DESC)
         ''')
         
         conn.commit()
@@ -422,15 +445,148 @@ class ProjectStorageSQLite:
         suggestions = self.get_feature_suggestions_by_project(project_id)
         return suggestions[0] if suggestions else None
     
+    def save_section_state(self, project_id: str, section_id: str, is_expanded: bool) -> bool:
+        """
+        Save the state of a collapsible section for a project
+        
+        Args:
+            project_id: ID of the project
+            section_id: ID of the section
+            is_expanded: Whether the section is expanded
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        print(f"[DEBUG] save_section_state called with - project_id: {project_id}, section_id: {section_id}, is_expanded: {is_expanded}")
+        
+        if not project_id or not section_id:
+            print("[ERROR] Missing project_id or section_id")
+            return False
+            
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_file)
+            cursor = conn.cursor()
+            
+            # Check if the table exists
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='section_states'")
+            if not cursor.fetchone():
+                print("[ERROR] section_states table does not exist")
+                return False
+                
+            # Log current state before update
+            cursor.execute('''
+                SELECT is_expanded FROM section_states 
+                WHERE project_id = ? AND section_id = ?
+            ''', (project_id, section_id))
+            
+            existing = cursor.fetchone()
+            if existing:
+                print(f"[DEBUG] Current state in DB - is_expanded: {bool(existing[0])}")
+            else:
+                print("[DEBUG] No existing state found in DB")
+            
+            # Insert or update the state
+            updated_at = datetime.utcnow().isoformat()
+            params = (
+                str(uuid.uuid4()),
+                project_id,
+                section_id,
+                1 if is_expanded else 0,
+                updated_at
+            )
+            
+            print(f"[DEBUG] Executing query with params: {params}")
+            
+            cursor.execute('''
+                INSERT INTO section_states (id, project_id, section_id, is_expanded, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(project_id, section_id) 
+                DO UPDATE SET 
+                    is_expanded = excluded.is_expanded, 
+                    updated_at = excluded.updated_at
+            ''', params)
+            
+            conn.commit()
+            print("[DEBUG] Section state saved successfully")
+            return True
+            
+        except sqlite3.Error as e:
+            print(f"[ERROR] SQLite error in save_section_state: {e}")
+            if conn:
+                conn.rollback()
+            return False
+            
+        except Exception as e:
+            print(f"[ERROR] Unexpected error in save_section_state: {e}")
+            if conn:
+                conn.rollback()
+            return False
+            
+        finally:
+            if conn:
+                conn.close()
+    
+    def get_section_states(self, project_id: str) -> Dict[str, bool]:
+        """
+        Get all section states for a project
+        
+        Args:
+            project_id: ID of the project
+            
+        Returns:
+            Dictionary mapping section IDs to their expanded state
+        """
+        print(f"[DEBUG] get_section_states called for project_id: {project_id}")
+        
+        if not project_id:
+            print("[ERROR] Missing project_id in get_section_states")
+            return {}
+            
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_file)
+            cursor = conn.cursor()
+            
+            # Check if the table exists
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='section_states'")
+            if not cursor.fetchone():
+                print("[WARNING] section_states table does not exist")
+                return {}
+            
+            # Get all section states for the project
+            cursor.execute('''
+                SELECT section_id, is_expanded 
+                FROM section_states 
+                WHERE project_id = ?
+            ''', (project_id,))
+            
+            result = {row[0]: bool(row[1]) for row in cursor.fetchall()}
+            print(f"[DEBUG] Retrieved {len(result)} section states from DB")
+            
+            return result
+            
+        except sqlite3.Error as e:
+            print(f"[ERROR] SQLite error in get_section_states: {e}")
+            return {}
+            
+        except Exception as e:
+            print(f"[ERROR] Unexpected error in get_section_states: {e}")
+            return {}
+            
+        finally:
+            if conn:
+                conn.close()
+    
     def save_estimation(self, project_name: str, project_description: str, phases: List[Dict], total_hours: int) -> Dict:
         """
-        Save a project estimation
+        Save a new project estimation
         
         Args:
             project_name: Name of the project
             project_description: Description of the project
-            phases: List of phase dictionaries with name, tasks, and hours
-            total_hours: Total estimated hours for the project
+            phases: List of phase dictionaries
+            total_hours: Total estimated hours
             
         Returns:
             The saved estimation dictionary
@@ -537,18 +693,78 @@ class ProjectStorageSQLite:
         Delete an estimation by ID
         
         Args:
-            estimation_id: UUID of the estimation to delete
+            estimation_id: ID of the estimation to delete
             
         Returns:
-            True if deleted, False if not found
+            bool: True if deletion was successful, False otherwise
         """
-        conn = sqlite3.connect(self.db_file)
-        cursor = conn.cursor()
+        try:
+            conn = sqlite3.connect(self.db_file)
+            cursor = conn.cursor()
+            
+            cursor.execute("DELETE FROM estimations WHERE id = ?", (estimation_id,))
+            
+            conn.commit()
+            return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            print(f"Error deleting estimation: {e}")
+            return False
+        finally:
+            conn.close()
+            
+    def save_section_state(self, project_id: str, section_id: str, is_expanded: bool) -> bool:
+        """
+        Save the state of a collapsible section for a project
         
-        cursor.execute('DELETE FROM estimations WHERE id = ?', (estimation_id,))
+        Args:
+            project_id: ID of the project
+            section_id: ID of the section
+            is_expanded: Whether the section is expanded
+            
+        Returns:
+            bool: True if save was successful
+        """
+        try:
+            conn = sqlite3.connect(self.db_file)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO section_states (id, project_id, section_id, is_expanded, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(project_id, section_id) 
+                DO UPDATE SET is_expanded = excluded.is_expanded, updated_at = excluded.updated_at
+            ''', (str(uuid.uuid4()), project_id, section_id, is_expanded, datetime.now().isoformat()))
+            
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Error saving section state: {e}")
+            return False
+        finally:
+            conn.close()
+    
+    def get_section_states(self, project_id: str) -> Dict[str, bool]:
+        """
+        Get all section states for a project
         
-        deleted = cursor.rowcount > 0
-        conn.commit()
-        conn.close()
-        
-        return deleted
+        Args:
+            project_id: ID of the project
+            
+        Returns:
+            Dict[str, bool]: Dictionary mapping section IDs to their expanded state
+        """
+        try:
+            conn = sqlite3.connect(self.db_file)
+            cursor = conn.cursor()
+            
+            cursor.execute(
+                "SELECT section_id, is_expanded FROM section_states WHERE project_id = ?", 
+                (project_id,)
+            )
+            
+            return {row[0]: bool(row[1]) for row in cursor.fetchall()}
+        except sqlite3.Error as e:
+            print(f"Error loading section states: {e}")
+            return {}
+        finally:
+            conn.close()
