@@ -5,7 +5,7 @@ Handles AI plan generation using Groq API (Fast & Free!)
 
 import os
 import json
-from typing import Dict
+from typing import Dict, List
 from groq import Groq
 from dotenv import load_dotenv
 
@@ -343,7 +343,102 @@ Return ONLY the JSON object, no additional text or markdown formatting."""
         raise Exception(f"Failed to generate estimation: {str(e)}. Please check your GROQ_API_KEY environment variable.")
 
 
-def generate_feature_suggestions(project_name: str, audit_text: str) -> list:
+def generate_estimation_refinement(project_name: str, project_description: str, current_estimation: Dict, feedback: str) -> Dict:
+    """
+    Refine an existing estimation based on user feedback using Groq
+    
+    Args:
+        project_name: Name of the project
+        project_description: Original project description
+        current_estimation: The current estimation to refine
+        feedback: User's feedback or adjustments
+        
+    Returns:
+        Refined estimation with updated phases and hours
+    """
+    try:
+        # Create the prompt for Groq
+        prompt = f"""You are a senior software project estimator. You need to refine an existing project estimation 
+based on the user's feedback. Here's the current estimation and the user's feedback:
+
+PROJECT: {project_name}
+DESCRIPTION: {project_description}
+
+CURRENT ESTIMATION:
+{json.dumps(current_estimation, indent=2)}
+
+USER FEEDBACK:
+{feedback}
+
+Please provide a refined estimation based on this feedback. Consider:
+1. Adjusting phase durations if the user mentioned specific phases being too long/short
+2. Adding/removing phases if the user suggested changes to the project scope
+3. Modifying tasks within phases as needed
+4. Ensuring the total hours are updated accordingly
+
+Return the response in the following JSON format:
+{{
+    "project_name": "Project Name",
+    "project_description": "Project description",
+    "total_hours": 120,
+    "phases": [
+        {{
+            "name": "Phase 1: Planning",
+            "total_hours": 20,
+            "tasks": [
+                {{"task": "Task 1 description", "hours": 5}},
+                {{"task": "Task 2 description", "hours": 15}}
+            ]
+        }},
+        ...
+    ]
+}}
+
+Return ONLY the JSON object, no additional text or markdown formatting."""
+
+        # Call Groq API
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful project estimation assistant that refines existing estimates based on user feedback."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7,
+            max_tokens=2000
+        )
+        
+        # Parse the response
+        ai_response = response.choices[0].message.content.strip()
+        
+        # Clean up the response (remove markdown code blocks if present)
+        if '```json' in ai_response:
+            ai_response = ai_response.split('```json')[1].split('```')[0].strip()
+        elif '```' in ai_response:
+            ai_response = ai_response.split('```')[1].split('```')[0].strip()
+            
+        # Parse the JSON response
+        refined_estimation = json.loads(ai_response)
+        
+        # Ensure all required fields are present
+        required_fields = ['project_name', 'project_description', 'total_hours', 'phases']
+        if not all(field in refined_estimation for field in required_fields):
+            raise ValueError("Invalid response format from AI: Missing required fields")
+            
+        return refined_estimation
+        
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Failed to parse AI response: {str(e)}")
+    except Exception as e:
+        raise Exception(f"Failed to refine estimation: {str(e)}")
+
+
+def generate_feature_suggestions(project_name: str, audit_text: str) -> List[Dict]:
     """
     Generate AI-based feature suggestions from project audit using Groq
     

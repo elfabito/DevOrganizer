@@ -621,10 +621,76 @@ class ProjectStorageSQLite:
         conn.close()
         
         return new_estimation
-    
-    def load_all_estimations(self) -> List[Dict]:
+        
+    def get_estimation(self, estimation_id: str) -> Optional[Dict]:
         """
-        Load all estimations from database
+        Get a specific estimation by ID
+        
+        Args:
+            estimation_id: The ID of the estimation to retrieve
+            
+        Returns:
+            The estimation dictionary or None if not found
+        """
+        conn = sqlite3.connect(self.db_file)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT * FROM estimations WHERE id = ?', (estimation_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            conn.close()
+            return None
+            
+        estimation = dict(row)
+        estimation['phases'] = json.loads(estimation['phases'])
+        
+        conn.close()
+        return estimation
+    
+    def update_estimation(self, estimation_id: str, estimation_data: Dict) -> bool:
+        """
+        Update an existing estimation
+        
+        Args:
+            estimation_id: The ID of the estimation to update
+            estimation_data: Dictionary containing updated estimation data
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            conn = sqlite3.connect(self.db_file)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                UPDATE estimations 
+                SET project_name = ?,
+                    project_description = ?,
+                    phases = ?,
+                    total_hours = ?
+                WHERE id = ?
+            ''', (
+                estimation_data['project_name'],
+                estimation_data['project_description'],
+                json.dumps(estimation_data['phases']),
+                estimation_data['total_hours'],
+                estimation_id
+            ))
+            
+            conn.commit()
+            return cursor.rowcount > 0
+            
+        except Exception as e:
+            print(f"Error updating estimation: {str(e)}")
+            return False
+        finally:
+            conn.close()
+    
+    def get_all_estimations(self) -> List[Dict]:
+        """
+        Get all saved estimations
         
         Returns:
             List of estimation dictionaries
@@ -732,16 +798,27 @@ class ProjectStorageSQLite:
                 INSERT INTO section_states (id, project_id, section_id, is_expanded, updated_at)
                 VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(project_id, section_id) 
-                DO UPDATE SET is_expanded = excluded.is_expanded, updated_at = excluded.updated_at
-            ''', (str(uuid.uuid4()), project_id, section_id, is_expanded, datetime.now().isoformat()))
+                DO UPDATE SET 
+                    is_expanded = excluded.is_expanded,
+                    updated_at = excluded.updated_at
+            ''', (
+                str(uuid.uuid4()),
+                project_id,
+                section_id,
+                is_expanded,
+                datetime.now().isoformat()
+            ))
             
             conn.commit()
             return True
+            
         except sqlite3.Error as e:
             print(f"Error saving section state: {e}")
             return False
+            
         finally:
-            conn.close()
+            if 'conn' in locals():
+                conn.close()
     
     def get_section_states(self, project_id: str) -> Dict[str, bool]:
         """

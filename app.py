@@ -442,21 +442,76 @@ def delete_estimation(estimation_id):
     Delete an estimation by ID
     """
     try:
+        # Get the storage instance
+        storage = StorageClass(STORAGE_FILE)
+        
+        # Delete the estimation
         success = storage.delete_estimation(estimation_id)
         
-        if success:
+        if not success:
             return jsonify({
-                'success': True,
-                'message': 'Estimation deleted successfully'
-            })
-        else:
+                'error': 'Estimation not found or could not be deleted'
+            }), 404
+            
+        return jsonify({
+            'success': True
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to delete estimation: {str(e)}'
+        }), 500
+
+
+@app.route('/refine-estimation/<estimation_id>', methods=['POST'])
+def refine_estimation(estimation_id):
+    """
+    Refine an existing estimation based on user feedback
+    """
+    try:
+        data = request.get_json()
+        feedback = data.get('feedback', '').strip()
+        
+        if not feedback:
+            return jsonify({
+                'error': 'Feedback is required to refine the estimation'
+            }), 400
+            
+        # Get the original estimation
+        storage = StorageClass(STORAGE_FILE)
+        estimation = storage.get_estimation(estimation_id)
+        
+        if not estimation:
             return jsonify({
                 'error': 'Estimation not found'
             }), 404
             
+        # Call the AI service to refine the estimation
+        from ai_service import generate_estimation_refinement
+        
+        refined_estimation = generate_estimation_refinement(
+            estimation['project_name'],
+            estimation['project_description'],
+            estimation,
+            feedback
+        )
+        
+        # Update the estimation with the refined version
+        updated = storage.update_estimation(estimation_id, refined_estimation)
+        
+        if not updated:
+            return jsonify({
+                'error': 'Failed to update estimation with refined version'
+            }), 500
+            
+        return jsonify({
+            'success': True,
+            'estimation': refined_estimation
+        })
+        
     except Exception as e:
         return jsonify({
-            'error': f'Failed to delete estimation: {str(e)}'
+            'error': f'Failed to refine estimation: {str(e)}'
         }), 500
 
 

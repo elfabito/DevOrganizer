@@ -308,7 +308,35 @@
     {% endfor %}
 </div>
 
-<div class="action-buttons">
+<!-- Adjustment Section -->
+<div class="adjustment-section" style="margin-top: 40px; background: var(--light-gray); padding: 24px; border-radius: 12px;">
+    <h3>🔧 Not sure with the answer?</h3>
+    <p>If you'd like to adjust this estimation, please provide your feedback below and we'll refine it for you.</p>
+    
+    <div class="form-group" style="margin: 16px 0;">
+        <textarea 
+            id="estimationFeedback" 
+            class="form-control" 
+            rows="4" 
+            placeholder="Example: Phase 2 seems too long; reduce it by 30%. Also, can we add a QA phase?"
+            style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);"
+        ></textarea>
+    </div>
+    
+    <button 
+        id="refineEstimationBtn" 
+        class="btn btn-primary" 
+        style="display: flex; align-items: center; gap: 8px;"
+        onclick="refineEstimation()"
+    >
+        <span id="refineBtnText">🔄 Refine Estimation</span>
+        <span id="refineSpinner" class="spinner-border spinner-border-sm" role="status" style="display: none;"></span>
+    </button>
+    
+    <div id="refineError" class="error-message" style="color: #dc3545; margin-top: 12px; display: none;"></div>
+</div>
+
+<div class="action-buttons" style="margin-top: 32px;">
     <a href="{{ url_for('index') }}" class="btn btn-primary">← Back to Home</a>
     <button onclick="copyEstimationToClipboard()" class="btn btn-secondary">📋 Copy to Clipboard</button>
     <button onclick="window.print()" class="btn btn-secondary">🖨️ Print Estimation</button>
@@ -320,6 +348,62 @@
 </div>
 
 <script>
+    // Refine estimation with user feedback
+    async function refineEstimation() {
+        const feedback = document.getElementById('estimationFeedback').value.trim();
+        const refineBtn = document.getElementById('refineEstimationBtn');
+        const refineBtnText = document.getElementById('refineBtnText');
+        const refineSpinner = document.getElementById('refineSpinner');
+        const errorDiv = document.getElementById('refineError');
+        
+        if (!feedback) {
+            errorDiv.textContent = 'Please provide some feedback to refine the estimation.';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        try {
+            // Show loading state
+            refineBtn.disabled = true;
+            refineBtnText.textContent = 'Refining...';
+            refineSpinner.style.display = 'inline-block';
+            errorDiv.style.display = 'none';
+            
+            // Get the estimation ID from the URL
+            const estimationId = window.location.pathname.split('/').pop();
+            
+            // Call the API to refine the estimation
+            const response = await fetch(`/refine-estimation/${estimationId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    feedback: feedback
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to refine estimation');
+            }
+            
+            // Reload the page to show the updated estimation
+            window.location.reload();
+            
+        } catch (error) {
+            console.error('Error refining estimation:', error);
+            errorDiv.textContent = error.message || 'An error occurred while refining the estimation. Please try again.';
+            errorDiv.style.display = 'block';
+        } finally {
+            // Reset button state
+            refineBtn.disabled = false;
+            refineBtnText.textContent = '🔄 Refine Estimation';
+            refineSpinner.style.display = 'none';
+        }
+    }
+    
     // Toggle description Read More/Less
     function toggleDescription() {
         const descriptionText = document.getElementById('descriptionText');
