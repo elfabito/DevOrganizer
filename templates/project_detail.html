@@ -1327,7 +1327,244 @@
         }
     }
 
-    // Function to save section state to both localStorage and database
+    // Unified state management for all collapsible sections
+    const StateManager = {
+        // Save state to both localStorage and database
+        async saveState(sectionId, isExpanded, type = 'section') {
+            const projectId = '{{ project.id }}';
+            const storageKey = `project_${projectId}_${type}s`;
+            console.log(`[DEBUG] Saving ${type} state - ID: ${sectionId}, Expanded: ${isExpanded}`);
+            
+            if (!sectionId) {
+                console.error(`Error: ${type} ID is undefined or empty`);
+                return false;
+            }
+            
+            // Save to localStorage for immediate UI update
+            let states = {};
+            try {
+                const storedData = localStorage.getItem(storageKey);
+                console.log(`[DEBUG] Retrieved from localStorage:`, storedData);
+                states = storedData ? JSON.parse(storedData) : {};
+            } catch (e) {
+                console.error('Error parsing localStorage:', e);
+                states = {};
+            }
+            
+            console.log(`[DEBUG] Current states before update:`, states);
+            states[sectionId] = isExpanded;
+            console.log(`[DEBUG] Updated states:`, states);
+            
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(states));
+                console.log(`[DEBUG] Successfully updated localStorage`);
+            } catch (e) {
+                console.error('Error saving to localStorage:', e);
+            }
+            
+            // Save to database for persistence
+            try {
+                console.log(`[DEBUG] Making API call to save ${type} state`);
+                const url = `/api/projects/${projectId}/section-states/${type}-${sectionId}`;
+                console.log(`[DEBUG] API URL: ${url}`);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_expanded: isExpanded }),
+                    credentials: 'same-origin'
+                });
+                
+                console.log(`[DEBUG] API Response status:`, response.status);
+                const responseData = await response.json().catch(e => ({}));
+                console.log(`[DEBUG] API Response data:`, responseData);
+                
+                if (!response.ok) {
+                    console.error(`[ERROR] API Error ${response.status}:`, responseData);
+                    return false;
+                }
+                
+                console.log(`[DEBUG] Successfully saved ${type} state to server`);
+                return true;
+                
+            } catch (error) {
+                console.error(`[ERROR] Unexpected error saving ${type} state:`, error);
+                return false;
+            }
+        },
+        
+        // Load state from localStorage and database
+        async loadState(sectionId, type = 'section') {
+            const projectId = '{{ project.id }}';
+            const storageKey = `project_${projectId}_${type}s`;
+            
+            // First check localStorage for immediate response
+            let localStates = {};
+            try {
+                localStates = JSON.parse(localStorage.getItem(storageKey) || '{}');
+            } catch (e) {
+                console.error('Error parsing localStorage:', e);
+                localStates = {};
+            }
+            
+            // If we have a local state, use it but still sync with server in background
+            if (localStates[sectionId] !== undefined) {
+                // Fire and forget sync with server
+                this.syncStates(projectId, type);
+                return localStates[sectionId];
+            }
+            
+            // If no local state, try to load from server
+            try {
+                const response = await fetch(`/api/projects/${projectId}/section-states`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        // Filter states for the current type
+                        const typePrefix = `${type}-`;
+                        const typeStates = Object.entries(data.section_states || {})
+                            .filter(([key]) => key.startsWith(typePrefix))
+                            .reduce((acc, [key, value]) => ({
+                                ...acc,
+                                [key.substring(typePrefix.length)]: value
+                            }), {});
+                        
+                        // Update localStorage with server states
+                        const updatedStates = { ...localStates, ...typeStates };
+                        localStorage.setItem(storageKey, JSON.stringify(updatedStates));
+                        
+                        // Return the state for the requested section if it exists
+                        if (typeStates[sectionId] !== undefined) {
+                            return typeStates[sectionId];
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading section states from server:', error);
+            }
+            
+            // Default to collapsed for sections, expanded for phases if no state is found
+            return type === 'phase' ? true : false;
+        },
+        
+        // Sync states from server to localStorage
+        async syncStates(projectId, type = 'section') {
+            try {
+                const response = await fetch(`/api/projects/${projectId}/section-states`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        const storageKey = `project_${projectId}_${type}s`;
+                        const typePrefix = `${type}-`;
+                        
+                        // Filter states for the current type
+                        const typeStates = Object.entries(data.section_states || {})
+                            .filter(([key]) => key.startsWith(typePrefix))
+                            .reduce((acc, [key, value]) => ({
+                                ...acc,
+                                [key.substring(typePrefix.length)]: value
+                            }), {});
+                        
+                        // Get current local states
+                        let localStates = {};
+                        try {
+                            localStates = JSON.parse(localStorage.getItem(storageKey) || '{}');
+                        } catch (e) {
+                            console.error('Error parsing localStorage during sync:', e);
+                            localStates = {};
+                        }
+                        
+                        // Merge server states with local states (local takes precedence)
+                        const mergedStates = { ...typeStates, ...localStates };
+                        localStorage.setItem(storageKey, JSON.stringify(mergedStates));
+                        
+                        // Update UI if needed
+                        this.updateUI(mergedStates, type);
+                        
+                        return true;
+                    }
+                }
+                return false;
+            } catch (error) {
+                console.error(`Error syncing ${type} states:`, error);
+                return false;
+            }
+        },
+        
+        // Update UI based on states
+        updateUI(states, type = 'section') {
+            Object.entries(states).forEach(([id, isExpanded]) => {
+                const selector = type === 'section' ? 
+                    `[data-section-id="${id}"]` : 
+                    `[data-phase-id="${id}"]`;
+                    
+                const section = document.querySelector(selector);
+                if (!section) return;
+                
+                const header = section.querySelector(`.${type}-header`);
+                const content = type === 'section' ? 
+                    header?.nextElementSibling : 
+                    section.querySelector(`.${type}-tasks`);
+                
+                if (!header || !content) {
+                    console.warn(`Missing header or content for ${type}:`, id);
+                    return;
+                }
+                
+                if (isExpanded) {
+                    content.style.display = 'block';
+                    header.classList.add('expanded');
+                    header.classList.remove('collapsed');
+                    const toggleIcon = header.querySelector('.toggle-icon');
+                    if (toggleIcon) {
+                        toggleIcon.style.transform = 'rotate(180deg)';
+                    }
+                } else {
+                    content.style.display = 'none';
+                    header.classList.remove('expanded');
+                    header.classList.add('collapsed');
+                    const toggleIcon = header.querySelector('.toggle-icon');
+                    if (toggleIcon) {
+                        toggleIcon.style.transform = 'rotate(0)';
+                    }
+                }
+            });
+            return true;
+        },
+        
+        // Toggle section/phase visibility
+        toggle(header, type = 'section') {
+            const section = header.closest(`.${type}-card, .${type}-category`);
+            const content = type === 'section' ? 
+                header.nextElementSibling : 
+                section.querySelector(`.${type}-tasks`);
+                
+            const toggleIcon = header.querySelector('.toggle-icon');
+            const sectionId = header.getAttribute(`data-${type}-id`);
+            
+            if (!sectionId) return;
+            
+            const isExpanding = content.style.display !== 'block';
+            
+            // Toggle UI
+            if (isExpanding) {
+                content.style.display = 'block';
+                header.classList.add('expanded');
+                header.classList.remove('collapsed');
+                if (toggleIcon) toggleIcon.style.transform = 'rotate(180deg)';
+            } else {
+                content.style.display = 'none';
+                header.classList.remove('expanded');
+                header.classList.add('collapsed');
+                if (toggleIcon) toggleIcon.style.transform = 'rotate(0)';
+            }
+            
+            // Save the state
+            this.saveState(sectionId, isExpanding, type);
+        }
+    };
+    
+    // Alias functions for backward compatibility
     async function saveSectionState(sectionId, isExpanded) {
         const projectId = '{{ project.id }}';
         console.log(`[DEBUG] saveSectionState called - Project: ${projectId}, Section: ${sectionId}, Expanded: ${isExpanded}`);
