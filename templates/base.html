@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}Dev Project Organizer{% endblock %}</title>
     <style>
         * {
@@ -42,13 +44,15 @@
 
         .header {
             background: var(--white);
-            padding: 24px 32px;
+            padding: 20px 32px;
             border-radius: 12px;
             box-shadow: var(--shadow-lg);
             margin-bottom: 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
         }
 
         .header h1 {
@@ -57,6 +61,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            margin: 0;
         }
 
         .header h1::before {
@@ -65,7 +70,7 @@
         }
 
         .btn {
-            padding: 12px 24px;
+            padding: 10px 20px;
             border: none;
             border-radius: 8px;
             font-size: 14px;
@@ -73,12 +78,21 @@
             cursor: pointer;
             transition: all 0.2s;
             text-decoration: none;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
         }
 
         .btn-primary {
             background: var(--primary);
             color: var(--white);
+            border: 1px solid var(--primary);
         }
 
         .btn-primary:hover {
@@ -90,10 +104,195 @@
         .btn-secondary {
             background: var(--light-gray);
             color: var(--dark);
+            border: 1px solid var(--border);
         }
 
         .btn-secondary:hover {
             background: var(--border);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .user-menu {
+            position: relative;
+            display: inline-block;
+        }
+
+        .user-menu-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+
+        .user-menu-btn:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .user-menu-dropdown {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 8px);
+            background: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            min-width: 200px;
+            z-index: 1000;
+            overflow: hidden;
+            display: none;
+        }
+
+        .user-menu.active .user-menu-dropdown {
+            display: block;
+        }
+
+        .user-menu-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .user-menu-email {
+            font-size: 13px;
+            color: var(--gray);
+            margin-top: 2px;
+        }
+
+        .user-menu-item {
+            display: block;
+            padding: 10px 16px;
+            color: var(--dark);
+            text-decoration: none;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        .user-menu-item:hover {
+            background-color: var(--light-gray);
+        }
+
+        .user-menu-divider {
+            height: 1px;
+            background-color: var(--border);
+            margin: 4px 0;
+        }
+
+        /* Auth Pages */
+        .auth-container {
+            max-width: 400px;
+            margin: 40px auto;
+            padding: 16px;
+        }
+
+        .auth-card {
+            background: var(--white);
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .auth-card h1 {
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .auth-card p {
+            color: var(--gray);
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .error-message {
+            color: var(--danger);
+            font-size: 13px;
+            margin-top: 4px;
+            min-height: 20px;
+        }
+
+        .input-error {
+            border-color: var(--danger) !important;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-error {
+            background-color: #FEE2E2;
+            color: #991B1B;
+            border: 1px solid #FCA5A5;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mb-8 {
+            margin-bottom: 2rem;
+        }
+
+        .mt-2 {
+            margin-top: 0.5rem;
+        }
+
+        .w-full {
+            width: 100%;
+        }
+
+        .auth-buttons {
+            display: flex;
+            gap: 10px;
         }
 
         .btn-danger {
@@ -172,8 +371,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .footer {
@@ -185,16 +389,53 @@
     </style>
     {% block extra_styles %}{% endblock %}
 </head>
+
 <body>
     <div class="container">
         <div class="header">
             <h1>{% block header_title %}Dev Project Organizer{% endblock %}</h1>
-            <div>
-                {% block header_actions %}
-                <a href="{{ url_for('index') }}" class="btn btn-secondary">🏠 Home</a>
-                {% endblock %}
+            <div class="header-actions">
+                {% if current_user %}
+                <div class="user-menu" id="userMenu">
+                    <div class="user-menu-btn" id="userMenuBtn">
+                        <div class="user-avatar">{{ current_user.name|first|upper }}</div>
+                        <span>{{ current_user.name }}</span>
+                        <span>▼</span>
+                    </div>
+                    <div class="user-menu-dropdown">
+                        <div class="user-menu-header">
+                            <div class="font-medium">{{ current_user.name }}</div>
+                            <div class="user-menu-email">{{ current_user.email }}</div>
+                        </div>
+                        <a href="#" class="user-menu-item">Profile</a>
+                        <a href="#" class="user-menu-item">Settings</a>
+                        <div class="user-menu-divider"></div>
+                        <a href="#" class="user-menu-item" id="logoutBtn">Sign out</a>
+                    </div>
+                </div>
+                {% else %}
+                <div class="auth-buttons">
+                    <a href="{{ url_for('web_login') }}" class="btn btn-outline btn-sm">Log in</a>
+                    <a href="{{ url_for('web_signup') }}" class="btn btn-primary btn-sm">Sign up</a>
+                </div>
+                {% endif %}
             </div>
+            {% block header_actions %}
+            <a href="{{ url_for('web_signup' if not current_user else 'index') }}" class="btn btn-secondary">🏠 Home</a>
+            {% endblock %}
         </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash-message flash-{{ category }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
 
         <div class="content">
             {% block content %}{% endblock %}
@@ -203,8 +444,163 @@
         <div class="footer">
             <p>Made with ❤️ for developers | Dev Project Organizer v1.0</p>
         </div>
-    </div>
 
-    {% block extra_scripts %}{% endblock %}
+        <script>
+            // Auth state management
+            function getAuthToken() {
+                // Try to get token from localStorage first
+                let token = localStorage.getItem('token');
+
+                // If not in localStorage, try to get from cookies
+                if (!token) {
+                    const match = document.cookie.match(/token=([^;]+)/);
+                    if (match) {
+                        token = match[1];
+                        // Store in localStorage for future use
+                        localStorage.setItem('token', token);
+                    }
+                }
+
+                return token || null;
+            }
+
+            // Check if user is authenticated
+            function isAuthenticated() {
+                return !!getAuthToken();
+            }
+
+            // Redirect to login if not authenticated
+            function requireAuth() {
+                const publicRoutes = ['/auth/web_login', '/auth/web_signup', '/'];
+                const currentPath = window.location.pathname;
+                
+                // Skip auth check for public routes
+                if (publicRoutes.includes(currentPath)) {
+                    return true;
+                }
+
+                if (!isAuthenticated()) {
+                    // Store the current URL to redirect back after login
+                    sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+                    
+                    // Show login modal or redirect to login page
+                    const loginModal = document.getElementById('loginModal');
+                    if (loginModal) {
+                        loginModal.style.display = 'block';
+                    } else {
+                        window.location.href = '/auth/web_login';
+                    }
+                    return false;
+                }
+                return true;
+            }
+
+            // Handle page load
+            document.addEventListener('DOMContentLoaded', () => {
+                // Define public routes that don't require authentication
+                const publicRoutes = ['/web_login', '/web_signup', '/'];
+                const currentPath = window.location.pathname;
+                const isPublicRoute = publicRoutes.some(route => currentPath.startsWith(route));
+                const token = getAuthToken();
+
+                // If user is logged in and tries to access auth pages, redirect to home
+                if (token && (currentPath.includes('/web_login') || currentPath.includes('/web_signup'))) {
+                    window.location.href = '/';
+                    return;
+                }
+
+                // If user is not logged in and not on a public route, redirect to login
+                if (!token && !isPublicRoute) {
+                    // Only redirect if we're not already on the login page
+                    if (!currentPath.includes('/web_login')) {
+                        window.location.href = '/auth/web_login';
+                    }
+                    return;
+                }
+
+                // Initialize UI elements
+                const userMenu = document.getElementById('userMenu');
+                const userMenuBtn = document.getElementById('userMenuBtn');
+                const logoutBtn = document.getElementById('logoutBtn');
+
+                // Toggle user menu
+                if (userMenu && userMenuBtn) {
+                    userMenuBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        userMenu.classList.toggle('active');
+                    });
+
+                    // Close menu when clicking outside
+                    document.addEventListener('click', (e) => {
+                        if (!userMenu.contains(e.target)) {
+                            userMenu.classList.remove('active');
+                        }
+                    });
+                }
+
+                // Logout functionality
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        try {
+                            // Call logout API (clears token and server session)
+                            await fetch('/api/auth/logout', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${getAuthToken()}`
+                                },
+                                credentials: 'same-origin'
+                            });
+
+                            // Also call server-side web logout to ensure Flask session cleared
+                            try {
+                                await fetch('/logout', { method: 'GET', credentials: 'same-origin' });
+                            } catch (e) {
+                                // ignore
+                            }
+
+                            // Clear local storage
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+
+                            // Clear cookies (best-effort)
+                            document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+                            const sessionName = '{{ config.SESSION_COOKIE_NAME if config and config.SESSION_COOKIE_NAME else "devorg_session" }}';
+                            document.cookie = sessionName + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+
+                            // Redirect to login with a small delay to ensure cleanup
+                            setTimeout(() => {
+                                window.location.href = '/web_login';
+                            }, 100);
+
+                        } catch (error) {
+                            console.error('Logout error:', error);
+                            // Even if API call fails, clear local state and redirect
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+                            document.cookie = 'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+                            window.location.href = '/web_login';
+                        }
+                    });
+                }
+
+                // Handle redirect after login
+                const redirectAfterLogin = sessionStorage.getItem('redirectAfterLogin');
+                if (redirectAfterLogin && isAuthenticated()) {
+                    sessionStorage.removeItem('redirectAfterLogin');
+                    window.location.href = redirectAfterLogin;
+                }
+            });
+
+            // Add global auth functions to window object
+            window.auth = {
+                getToken: getAuthToken,
+                isAuthenticated: isAuthenticated,
+                requireAuth: requireAuth
+            };
+        </script>
+        {% block extra_scripts %}{% endblock %}
 </body>
+
 </html>

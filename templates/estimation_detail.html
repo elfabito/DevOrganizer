@@ -348,7 +348,49 @@
 </div>
 
 <script>
-    // Refine estimation with user feedback
+    // Function to get CSRF token from cookies
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+    }
+
+    // Function to get CSRF token from multiple possible sources
+    function getCSRFToken() {
+        // Try to get from meta tag
+        let token = document.querySelector('meta[name="csrf-token"]')?.content;
+        
+        // If not found in meta tag, try to get from cookies
+        if (!token) {
+            token = getCookie('csrf_token') || getCookie('_csrf_token');
+        }
+        
+        // If still not found, try to get from response headers
+        if (!token) {
+            const xhr = new XMLHttpRequest();
+            xhr.open('HEAD', window.location.href, false);
+            xhr.send();
+            token = xhr.getResponseHeader('X-CSRF-Token');
+        }
+        
+        // Log if we couldn't find a token
+        if (!token) {
+            console.warn('CSRF token not found in any source');
+        } else {
+            // Update the meta tag for future use
+            let meta = document.querySelector('meta[name="csrf-token"]');
+            if (!meta) {
+                meta = document.createElement('meta');
+                meta.name = 'csrf-token';
+                document.head.appendChild(meta);
+            }
+            meta.content = token;
+        }
+        
+        return token;
+    }
+
     async function refineEstimation() {
         const feedback = document.getElementById('estimationFeedback').value.trim();
         const refineBtn = document.getElementById('refineEstimationBtn');
@@ -372,18 +414,86 @@
             // Get the estimation ID from the URL
             const estimationId = window.location.pathname.split('/').pop();
             
+            // Get CSRF token
+            const csrfToken = getCSRFToken();
+            if (!csrfToken) {
+                console.warn('CSRF token not found in meta tag or cookies');
+                // Try to get a new token by making a GET request to the current page
+                const response = await fetch(window.location.href, {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                });
+                
+                if (response.ok) {
+                    // Parse the response as text to avoid CORS issues
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newToken = doc.querySelector('meta[name="csrf-token"]')?.content;
+                    
+                    if (newToken) {
+                        // Update the meta tag with the new token
+                        let meta = document.querySelector('meta[name="csrf-token"]');
+                        if (!meta) {
+                            meta = document.createElement('meta');
+                            meta.name = 'csrf-token';
+                            document.head.appendChild(meta);
+                        }
+                        meta.content = newToken;
+                        
+                        // Retry the request with the new token
+                        console.log('Retrying with new CSRF token');
+                        return refineEstimation();
+                    }
+                }
+                
+                throw new Error('CSRF token not found. Please refresh the page and try again.');
+            }
+            
             // Call the API to refine the estimation
             const response = await fetch(`/refine-estimation/${estimationId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    feedback: feedback
-                })
+                    feedback: feedback,
+                    csrf_token: csrfToken
+                }),
+                credentials: 'same-origin'
             });
             
-            const data = await response.json();
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            let data;
+            
+            if (contentType && contentType.includes('application/json')) {
+                data = await response.json();
+            } else {
+                // If not JSON, it's likely an HTML error page
+                const text = await response.text();
+                console.error('Non-JSON response received:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    text: text.substring(0, 1000)
+                });
+                
+                if (response.status === 401) {
+                    // Session expired, redirect to login
+                    window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+                    return;
+                } else if (response.status === 400 && text.includes('CSRF')) {
+                    // CSRF error, reload the page to get a new token
+                    console.log('CSRF token invalid, reloading page...');
+                    window.location.reload();
+                    return;
+                }
+                throw new Error('Received an invalid response from the server');
+            }
             
             if (!response.ok) {
                 throw new Error(data.error || 'Failed to refine estimation');
@@ -396,11 +506,23 @@
             console.error('Error refining estimation:', error);
             errorDiv.textContent = error.message || 'An error occurred while refining the estimation. Please try again.';
             errorDiv.style.display = 'block';
+            
+            // If it's a CSRF error, try to recover by reloading the page
+            if (error.message.includes('CSRF') || error.message.includes('token')) {
+                console.log('CSRF error detected, reloading page...');
+                setTimeout(() => window.location.reload(), 2000);
+            }
         } finally {
             // Reset button state
-            refineBtn.disabled = false;
-            refineBtnText.textContent = '🔄 Refine Estimation';
-            refineSpinner.style.display = 'none';
+            const refineBtn = document.getElementById('refineEstimationBtn');
+            const refineBtnText = document.getElementById('refineBtnText');
+            const refineSpinner = document.getElementById('refineSpinner');
+            
+            if (refineBtn && refineBtnText && refineSpinner) {
+                refineBtn.disabled = false;
+                refineBtnText.textContent = '🔄 Refine Estimation';
+                refineSpinner.style.display = 'none';
+            }
         }
     }
     

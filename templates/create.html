@@ -45,6 +45,128 @@
         gap: 12px;
         margin-top: 32px;
     }
+    
+    /* Tabs */
+    .tabs-container {
+        margin-top: 24px;
+        background: var(--white);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+    }
+    
+    .tabs-header {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+        background: #f8fafc;
+        padding: 0 16px;
+        overflow-x: auto;
+        scrollbar-width: none; /* Firefox */
+    }
+    
+    .tabs-header::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Edge */
+    }
+    
+    .tab-button {
+        padding: 14px 20px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--gray);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+        transition: all 0.2s;
+        position: relative;
+    }
+    
+    .tab-button:hover:not(.disabled) {
+        color: var(--primary);
+        background: rgba(59, 130, 246, 0.05);
+    }
+    
+    .tab-button.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+    }
+    
+    .tab-button .tab-badge {
+        background: var(--danger);
+        color: white;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 4px;
+        position: relative;
+        top: -1px;
+    }
+    
+    .tab-badge {
+        background: var(--danger);
+        color: white;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 4px;
+    }
+    
+    .tab-icon {
+        font-size: 16px;
+    }
+    
+    .tab-content {
+        display: none;
+        padding: 24px;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+    
+    .disabled-tab {
+        background: #f8fafc;
+        color: var(--gray);
+        text-align: center;
+        padding: 40px 20px;
+        border-left: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        border-radius: 0 0 8px 8px;
+        min-height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .save-required-message {
+        max-width: 500px;
+        margin: 0 auto;
+        text-align: center;
+        padding: 40px 0;
+    }
+    
+    .save-required-icon {
+        font-size: 48px;
+        margin-bottom: 20px;
+        opacity: 0.7;
+    }
+    
+    .save-required-message h3 {
+        color: var(--dark);
+        margin-bottom: 12px;
+        font-size: 20px;
+    }
+    
+    .save-required-message p {
+        color: var(--gray);
+        margin-bottom: 24px;
+        line-height: 1.6;
+    }
 
     .ai-results {
         display: none;
@@ -82,8 +204,55 @@
         color: var(--dark);
     }
 
+    /* Collapsible sections */
+    .collapsible-section {
+        margin-bottom: 15px;
+    }
+    
+    .collapsible-header {
+        cursor: pointer;
+        padding: 12px 16px;
+        background-color: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-weight: 600;
+        color: #333;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s ease;
+    }
+    
+    .collapsible-header:hover {
+        background-color: #e9e9e9;
+    }
+    
+    .collapsible-header:after {
+        content: '▼';
+        font-size: 12px;
+        transition: transform 0.3s ease;
+    }
+    
+    .collapsible-header.collapsed:after {
+        transform: rotate(-90deg);
+    }
+    
+    .collapsible-content {
+        padding: 0;
+        border: 1px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+        display: none;
+        overflow: hidden;
+    }
+    
+    .collapsible-content.expanded {
+        display: block;
+        padding: 15px;
+    }
+    
     .questions-category {
-        margin-bottom: 24px;
+        margin: 0;
     }
 
     .questions-category h4 {
@@ -380,30 +549,68 @@
     <div class="tabs-container">
         <div class="tabs-header">
             <button class="tab-button active" onclick="switchPreviewTab('questions')">
-                ❓ Technical Questions
+                <span class="tab-icon">❓</span>
+                Technical Questions
             </button>
             <button class="tab-button" onclick="switchPreviewTab('clickup')">
-                📋 ClickUp Task Plan
+                <span class="tab-icon">📋</span>
+                ClickUp Task Plan
+            </button>
+            <button class="tab-button" onclick="switchPreviewTab('weekly')">
+                <span class="tab-icon">📝</span>
+                Weekly Summary
+                <span class="tab-badge">Save Required</span>
+            </button>
+            <button class="tab-button" onclick="switchPreviewTab('features')">
+                <span class="tab-icon">💡</span>
+                Feature Suggestions
+                <span class="tab-badge">Save Required</span>
             </button>
         </div>
 
-        <!-- Tab 1: Questions -->
         <div id="preview-questions-tab" class="tab-content active">
             <div class="section">
-                <div id="questionsContainer"></div>
+                <h3>❓ Technical Questions</h3>
+                <div class="questions-container" id="questionsContainer"></div>
             </div>
         </div>
 
-        <!-- Tab 2: ClickUp Plan -->
         <div id="preview-clickup-tab" class="tab-content">
             <div class="section">
+                <h3>📋 ClickUp Task Plan</h3>
                 <div class="task-plan" id="taskPlan"></div>
+            </div>
+        </div>
+
+        <div id="preview-weekly-tab" class="tab-content disabled-tab">
+            <div class="section">
+                <div class="save-required-message">
+                    <div class="save-required-icon">🔒</div>
+                    <h3>Save Project to Unlock</h3>
+                    <p>This feature is only available after saving your project. Please save your project to access the Weekly Summary and other advanced features.</p>
+                    <button class="btn btn-primary" onclick="document.getElementById('saveProjectBtn').click()">
+                        💾 Save Project Now
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="preview-features-tab" class="tab-content disabled-tab">
+            <div class="section">
+                <div class="save-required-message">
+                    <div class="save-required-icon">🔒</div>
+                    <h3>Save Project to Unlock</h3>
+                    <p>This feature is only available after saving your project. Please save your project to access Feature Suggestions and other advanced features.</p>
+                    <button class="btn btn-primary" onclick="document.getElementById('saveProjectBtn').click()">
+                        💾 Save Project Now
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="form-actions">
-        <button type="button" class="btn btn-success" onclick="saveProject()">
+        <button type="button" id="saveProjectBtn" class="btn btn-success" onclick="saveProject()">
             💾 Save Project
         </button>
         <button type="button" class="btn btn-secondary" onclick="regeneratePlan()">
@@ -459,11 +666,16 @@
         updateSteps(2);
 
         try {
-            const response = await fetch('/generate-plan', {
+            // Get CSRF token from meta tag
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            const response = await fetch('/api/generate-plan', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify({ name, description })
             });
 
@@ -496,10 +708,16 @@
         });
         
         // Show selected tab
-        document.getElementById('preview-' + tabName + '-tab').classList.add('active');
+        const tab = document.getElementById('preview-' + tabName + '-tab');
+        tab.classList.add('active');
         
         // Activate corresponding button
         event.target.classList.add('active');
+        
+        // If it's a disabled tab, ensure it's scrolled into view
+        if (tab.classList.contains('disabled-tab')) {
+            tab.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
 
     function displayAIResults(aiData) {
@@ -508,47 +726,72 @@
             <strong>Recommended Stack:</strong> ${aiData.tech_stack_summary}
         `;
 
-        // Display questions by category
+        // Display questions by category with collapsible sections
         let questionsHTML = '';
         for (const [category, questions] of Object.entries(aiData.questions)) {
             if (questions.length > 0) {
+                const categoryId = `category-${category.toLowerCase().replace(/\s+/g, '-')}`;
                 questionsHTML += `
-                    <div class="questions-category">
-                        <h4>${category}</h4>
-                        <ul>
-                            ${questions.map(q => `<li>${q}</li>`).join('')}
-                        </ul>
+                    <div class="collapsible-section">
+                        <div class="collapsible-header" onclick="toggleCollapsible('${categoryId}')">
+                            ${category}
+                        </div>
+                        <div id="${categoryId}" class="collapsible-content">
+                            <div class="questions-category">
+                                <ul>
+                                    ${questions.map(q => `<li>${q}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 `;
             }
         }
         document.getElementById('questionsContainer').innerHTML = questionsHTML;
 
-        // Display task plan
+        // Display task plan with collapsible phases
         let taskPlanHTML = '';
         if (aiData.clickup_plan && aiData.clickup_plan.phases) {
-            // New card format
-            aiData.clickup_plan.phases.forEach(phase => {
+            aiData.clickup_plan.phases.forEach((phase, index) => {
+                const phaseId = `phase-${index}`;
                 taskPlanHTML += `
-                    <div class="phase-card">
-                        <div class="phase-header">${phase.name}</div>
-                        <div class="phase-tasks">
-                            ${phase.tasks.map(task => `
-                                <div class="task-card priority-${task.priority}">
-                                    <div class="task-checkbox"></div>
-                                    <div class="task-text">${task.task}</div>
-                                    <span class="task-priority ${task.priority}">${task.priority}</span>
-                                </div>
-                            `).join('')}
+                    <div class="collapsible-section">
+                        <div class="collapsible-header" onclick="toggleCollapsible('${phaseId}')">
+                            ${phase.name}
+                        </div>
+                        <div id="${phaseId}" class="collapsible-content">
+                            <div class="phase-tasks">
+                                ${phase.tasks.map(task => `
+                                    <div class="task-card priority-${task.priority}">
+                                        <div class="task-checkbox"></div>
+                                        <div class="task-text">${task.task}</div>
+                                        <span class="task-priority ${task.priority}">${task.priority}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
                     </div>
                 `;
             });
         } else {
-            // Fallback for old text format
-            taskPlanHTML = `<div style="background: #f3f4f6; padding: 20px; border-radius: 8px; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8; color: #1f2937;">${aiData.clickup_plan}</div>`;
+            taskPlanHTML = `
+                <div class="collapsible-section">
+                    <div class="collapsible-header" onclick="toggleCollapsible('task-plan')">
+                        Task Plan
+                    </div>
+                    <div id="task-plan" class="collapsible-content">
+                        <div style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8; color: #1f2937; padding: 15px;">
+                            ${aiData.clickup_plan}
+                        </div>
+                    </div>
+                </div>`;
         }
         document.getElementById('taskPlan').innerHTML = taskPlanHTML;
+
+        // Initialize all sections as expanded by default
+        document.querySelectorAll('.collapsible-content').forEach(content => {
+            content.classList.add('expanded');
+        });
 
         // Show results
         document.getElementById('aiResults').classList.add('show');
@@ -569,11 +812,16 @@
         updateSteps(3);
 
         try {
-            const response = await fetch('/save-project', {
+            // Get CSRF token from meta tag
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            const response = await fetch('/api/projects', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     name,
                     brief,

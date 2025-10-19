@@ -231,25 +231,43 @@
 </div>
 
 <script>
+    // Helper function to show error message
+    function showError(message, duration = 10000) {
+        const errorBox = document.getElementById('errorBox');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        console.error('Error:', message);
+        errorMessage.textContent = message;
+        errorBox.style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        if (duration > 0) {
+            setTimeout(() => {
+                errorBox.style.display = 'none';
+            }, duration);
+        }
+    }
+    
     async function generateEstimation(event) {
         event.preventDefault();
         
+        // Get form elements
         const projectName = document.getElementById('projectName').value.trim();
         const projectInfo = document.getElementById('projectInfo').value.trim();
         const generateBtn = document.getElementById('generateBtn');
         const loadingOverlay = document.getElementById('loadingOverlay');
         const errorBox = document.getElementById('errorBox');
         
+        // Hide any previous errors
+        errorBox.style.display = 'none';
+        
         // Validate input
         if (!projectName || !projectInfo) {
-            document.getElementById('errorMessage').textContent = 'Please fill in all required fields.';
-            errorBox.style.display = 'block';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => {
-                errorBox.style.display = 'none';
-            }, 5000);
+            showError('Please fill in all required fields.', 5000);
             return;
         }
+        
+        console.log('Form validation passed');
         
         try {
             // Show loading overlay
@@ -258,34 +276,148 @@
             loadingOverlay.style.display = 'flex';
             errorBox.style.display = 'none';
             
-            // Call API
-            const response = await fetch('/generate-estimation', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    project_name: projectName,
-                    project_description: projectInfo
-                })
-            });
+            // Prepare request data with all required fields
+            const requestData = {
+                project_name: projectName,
+                project_description: projectInfo
+            };
             
-            const data = await response.json();
+            console.log('Preparing request data:', requestData);
             
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to generate estimation');
+            // Get CSRF token from meta tag
+            const csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
+            let csrfToken = csrfMetaTag ? csrfMetaTag.getAttribute('content') : null;
+            
+            // If not found in meta tag, try to get from form input
+            if (!csrfToken) {
+                const csrfInput = document.querySelector('input[name="csrf_token"]');
+                csrfToken = csrfInput ? csrfInput.value : null;
             }
             
-            // Redirect to estimation detail page
-            window.location.href = `/estimation/${data.estimation_id}`;
+            if (!csrfToken) {
+                console.error('CSRF token not found in meta tag or form input');
+                showError('Security token missing. Please refresh the page and try again.');
+                return;
+            }
+            
+            console.log('CSRF Token:', csrfToken ? 'Found' : 'Not found');
+            
+            // Call API with error handling
+            let response;
+            try {
+                response = await fetch('/generate-estimation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json; charset=utf-8',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(requestData)
+                });
+            } catch (networkError) {
+                console.error('Network error:', networkError);
+                throw new Error('Network error. Please check your connection and try again.');
+            }
+            
+            console.log('Response status:', response.status);
+            console.log('Response headers:', Object.fromEntries([...response.headers.entries()]));
+            
+            // Get response text first for debugging
+            const responseText = await response.text();
+            console.log('Raw response text:', responseText);
+            
+            // Try to parse JSON response
+            let data;
+            try {
+                data = JSON.parse(responseText);
+                console.log('Parsed response data:', data);
+            } catch (jsonError) {
+                console.error('Error parsing JSON response:', jsonError);
+                console.error('Response text that failed to parse:', responseText);
+                throw new Error(`Invalid JSON response from server: ${jsonError.message}`);
+            }
+            
+            if (!response.ok) {
+                // Handle CSRF token errors specifically
+                if (response.status === 400 && data && data.error && data.error.toLowerCase().includes('csrf')) {
+                    // If it's a CSRF error, suggest refreshing the page
+                    throw new Error('Session expired. Please refresh the page and try again.');
+                }
+                
+                // Try to get detailed error information
+                const errorDetails = [];
+                
+                if (data) {
+                    if (data.error) errorDetails.push(data.error);
+                    if (data.details) errorDetails.push(`Details: ${data.details}`);
+                    if (data.received_data) {
+                        errorDetails.push(`Received data: ${JSON.stringify(data.received_data, null, 2)}`);
+                    }
+                }
+                
+                // Add more context for 400 errors
+                if (response.status === 400) {
+                    if (!errorDetails.length) {
+                        errorDetails.push('Invalid request. Please check your input and try again.');
+                    }
+                    
+                    // Add validation errors if available
+                    if (data && data.errors) {
+                        const validationErrors = Object.entries(data.errors)
+                            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`);
+                        errorDetails.push('Validation errors:', ...validationErrors);
+                    }
+                }
+                
+                const errorMsg = [
+                    `Server returned status ${response.status} (${response.statusText})`,
+                    ...errorDetails
+                ].filter(Boolean).join('\n');
+                
+                console.error('API Error:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    data: data,
+                    fullError: errorMsg
+                });
+                
+                throw new Error(errorMsg);
+            }
+            
+            // Redirect to estimation detail page if we have an ID
+            if (data.estimation_id) {
+                window.location.href = `/estimation/${data.estimation_id}`;
+            } else {
+                throw new Error('No estimation ID in response');
+            }
             
         } catch (error) {
+            console.error('Error generating estimation:', error);
             loadingOverlay.style.display = 'none';
-            document.getElementById('errorMessage').textContent = error.message;
+            
+            // Format error message to be more user-friendly
+            let userFriendlyError = error.message || 'Failed to generate estimation. Please try again.';
+            
+            // Handle specific error patterns
+            if (userFriendlyError.includes('CSRF')) {
+                userFriendlyError = 'Session expired. Please refresh the page and try again.';
+            } else if (userFriendlyError.includes('400')) {
+                userFriendlyError = 'Invalid request. Please check your input and try again.';
+            } else if (userFriendlyError.includes('NetworkError')) {
+                userFriendlyError = 'Network error. Please check your internet connection and try again.';
+            }
+            
+            errorMessage.textContent = `Error: ${userFriendlyError}`;
             errorBox.style.display = 'block';
             window.scrollTo({ top: 0, behavior: 'smooth' });
             generateBtn.disabled = false;
             generateBtn.textContent = '✨ Generate Estimation';
+            
+            // Auto-hide error after 10 seconds
+            setTimeout(() => {
+                errorBox.style.display = 'none';
+            }, 10000);
         }
     }
 </script>

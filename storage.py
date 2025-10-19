@@ -58,38 +58,177 @@ class ProjectStorage:
                 return project
         return None
     
-    def save_project(self, name: str, brief: str, ai_data: Dict) -> Dict:
+    def save_project(self, project_data: Dict) -> str:
         """
-        Save a new project to storage
+        Save a project to storage
         
         Args:
-            name: Project name
-            brief: Project description
-            ai_data: AI-generated data (questions, plan, etc.)
-            
+            project_data: Dictionary containing project data
+                Required keys: name, brief, ai_data
+                Optional keys: id (auto-generated if not provided), created_at (defaults to now)
+                
         Returns:
-            The saved project dictionary
+            The ID of the saved project
+            
+        Raises:
+            ValueError: If required fields are missing or saving fails
         """
-        projects = self.load_all_projects()
+        # Validate required fields
+        if not all(key in project_data for key in ['name', 'brief', 'ai_data']):
+            raise ValueError("Missing required project fields")
+            
+        # Generate ID and timestamps if not provided
+        project_id = project_data.get('id') or str(uuid.uuid4())
+        created_at = project_data.get('created_at') or datetime.utcnow().isoformat()
         
-        # Create new project object
-        new_project = {
-            "id": str(uuid.uuid4()),
-            "name": name,
-            "created_at": datetime.now().isoformat(),
-            "brief": brief,
-            "ai_data": ai_data
+        # Create project dictionary
+        project = {
+            'id': project_id,
+            'name': project_data['name'],
+            'brief': project_data['brief'],
+            'ai_data': project_data['ai_data'],
+            'created_at': created_at
         }
         
-        # Add to projects list
-        projects.append(new_project)
+        # Load existing projects
+        projects = self.load_all_projects()
         
-        # Save to file
-        with open(self.storage_file, 'w') as f:
-            json.dump(projects, f, indent=2)
+        # Update existing project or add new one
+        existing_index = next((i for i, p in enumerate(projects) if p['id'] == project_id), None)
+        if existing_index is not None:
+            projects[existing_index] = project
+        else:
+            projects.append(project)
+            
+        # Save back to file
+        try:
+            with open(self.storage_file, 'w') as f:
+                json.dump(projects, f, indent=2)
+            return project_id
+            
+        except Exception as e:
+            raise ValueError(f"Failed to save project: {str(e)}")
+            
+    def get_estimation(self, estimation_id: str) -> Optional[Dict]:
+        """
+        Get an estimation by its ID
         
-        return new_project
-    
+        Args:
+            estimation_id: The ID of the estimation to retrieve
+            
+        Returns:
+            The estimation dictionary if found, None otherwise
+        """
+        try:
+            with open('estimations.json', 'r') as f:
+                estimations = json.load(f)
+            return next((e for e in estimations if e.get('id') == estimation_id), None)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return None
+            
+    def update_estimation(self, estimation_id: str, updated_data: Dict) -> bool:
+        """
+        Update an existing estimation
+        
+        Args:
+            estimation_id: The ID of the estimation to update
+            updated_data: Dictionary containing the updated estimation data
+            
+        Returns:
+            bool: True if update was successful, False otherwise
+            
+        Raises:
+            ValueError: If the estimation doesn't exist or update fails
+        """
+        try:
+            # Load existing estimations
+            try:
+                with open('estimations.json', 'r') as f:
+                    estimations = json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError):
+                raise ValueError("No estimations found")
+                
+            # Find the estimation to update
+            estimation_index = next((i for i, e in enumerate(estimations) 
+                                  if e.get('id') == estimation_id), None)
+                                  
+            if estimation_index is None:
+                raise ValueError(f"Estimation with ID {estimation_id} not found")
+                
+            # Update the estimation
+            estimations[estimation_index].update(updated_data)
+            
+            # Save back to file
+            with open('estimations.json', 'w') as f:
+                json.dump(estimations, f, indent=2)
+                
+            return True
+            
+        except Exception as e:
+            raise ValueError(f"Failed to update estimation: {str(e)}")
+            
+    def save_estimation(self, estimation_data: Dict) -> Dict:
+        """
+        Save an estimation to the JSON storage
+        
+        Args:
+            estimation_data: Dictionary containing estimation data
+                Required keys: project_name, project_description, phases, total_hours, user_id
+                Optional keys: id (auto-generated if not provided), created_at (defaults to now)
+                
+        Returns:
+            Dictionary containing the saved estimation data
+            
+        Raises:
+            ValueError: If required fields are missing or saving fails
+        """
+        try:
+            # Validate required fields
+            required_fields = ['project_name', 'project_description', 'phases', 'total_hours', 'user_id']
+            if not all(field in estimation_data for field in required_fields):
+                missing = [f for f in required_fields if f not in estimation_data]
+                raise ValueError(f"Missing required fields: {', '.join(missing)}")
+                
+            # Generate ID and timestamps if not provided
+            estimation_id = estimation_data.get('id') or str(uuid.uuid4())
+            created_at = estimation_data.get('created_at') or datetime.utcnow().isoformat()
+            
+            # Prepare estimation data
+            estimation = {
+                'id': estimation_id,
+                'project_name': estimation_data['project_name'],
+                'project_description': estimation_data['project_description'],
+                'phases': estimation_data['phases'],
+                'total_hours': int(estimation_data['total_hours']),
+                'created_at': created_at,
+                'user_id': estimation_data['user_id'],
+                'updated_at': datetime.utcnow().isoformat()
+            }
+            
+            # Load existing estimations
+            try:
+                with open('estimations.json', 'r') as f:
+                    estimations = json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError):
+                estimations = []
+                
+            # Update existing or add new estimation
+            existing_index = next((i for i, e in enumerate(estimations) 
+                                 if e.get('id') == estimation_id), None)
+            if existing_index is not None:
+                estimations[existing_index] = estimation
+            else:
+                estimations.append(estimation)
+                
+            # Save back to file
+            with open('estimations.json', 'w') as f:
+                json.dump(estimations, f, indent=2)
+                
+            return estimation
+            
+        except Exception as e:
+            raise ValueError(f"Failed to save estimation: {str(e)}")
+            
     def delete_project(self, project_id: str) -> bool:
         """
         Delete a project by ID

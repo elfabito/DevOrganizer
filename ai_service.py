@@ -8,6 +8,7 @@ import json
 from typing import Dict, List
 from groq import Groq
 from dotenv import load_dotenv
+from flask import current_app
 
 # Load environment variables from .env file
 load_dotenv()
@@ -195,17 +196,24 @@ def generate_estimation(project_name: str, project_description: str) -> Dict:
         project_description: Detailed description of the project
         
     Returns:
-        Dictionary containing phases with tasks and estimated hours
+        Dictionary containing:
+        - phases: List of project phases with tasks and hours
+        - total_hours: Total estimated hours
+        - error: Optional error message if something went wrong
     """
+    
+    # Define default error response
+    error_response = {
+        "phases": [],
+        "total_hours": 0,
+        "error": ""
+    }
     
     try:
         # Validate input
         if not project_description or not project_description.strip():
-            return {
-                "phases": [],
-                "total_hours": 0,
-                "error": "Please provide a project description"
-            }
+            error_response["error"] = "Please provide a project description"
+            return error_response
         
         # Create the prompt for Groq
         prompt = f"""You are a senior project manager and software estimation expert. Analyze this project and provide a detailed time estimation.
@@ -215,10 +223,7 @@ Project Name: {project_name}
 Project Description:
 {project_description}
 
-Please provide a comprehensive project estimation broken down into phases. Each phase should contain specific tasks with hour estimates.
-
-Return your estimation in the following JSON format:
-
+IMPORTANT: You MUST respond with a valid JSON object containing the following structure:
 {{
   "phases": [
     {{
@@ -229,15 +234,12 @@ Return your estimation in the following JSON format:
         {{"task": "Task description", "hours": 12}}
       ],
       "total_hours": 36
-    }},
-    {{
-      "name": "Another phase",
-      "tasks": [...],
-      "total_hours": 50
     }}
   ],
-  "total_hours": 86
+  "total_hours": 36
 }}
+
+Your response must be a valid JSON object that can be parsed with json.loads(). Do not include any other text, explanations, or markdown formatting outside of the JSON object.
 
 Guidelines:
 1. Create 4-7 realistic phases based on the project scope
@@ -250,97 +252,140 @@ Guidelines:
 8. Be specific about what each task involves
 9. Consider the full software development lifecycle
 
-Return ONLY the JSON object, no additional text or markdown formatting."""
+Remember: Your response must be a valid JSON object and nothing else!"""
 
         # Call Groq API with llama model
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful project estimation assistant that provides accurate time estimates in JSON format. Always respond with valid JSON."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.7,
-            max_tokens=2000
-        )
+        try:
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful project estimation assistant that provides accurate time estimates in JSON format. Always respond with valid JSON."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.7,
+                max_tokens=2000
+            )
+        except Exception as api_error:
+            current_app.logger.error(f"Groq API error: {str(api_error)}")
+            error_response["error"] = "Failed to connect to AI service. Please try again later."
+            return error_response
         
         # Parse the response
         ai_response = response.choices[0].message.content.strip()
         
-        # Remove markdown code blocks if present
-        if ai_response.startswith("```json"):
-            ai_response = ai_response[7:]
-        if ai_response.startswith("```"):
-            ai_response = ai_response[3:]
-        if ai_response.endswith("```"):
-            ai_response = ai_response[:-3]
+        # Add debug logging for the raw AI response
+        current_app.logger.debug(f"Raw AI response: {ai_response}")
         
-        ai_response = ai_response.strip()
-        
-        # Parse JSON
-        estimation_data = json.loads(ai_response)
-        
-        # Validate structure
-        if "phases" not in estimation_data or "total_hours" not in estimation_data:
-            raise ValueError("Invalid estimation structure")
-        
-        # Ensure total_hours is an integer
-        estimation_data["total_hours"] = int(estimation_data["total_hours"])
-        
-        return estimation_data
-        
-    except json.JSONDecodeError as e:
-        print(f"Error parsing Groq API response: {str(e)}")
-        # Return a fallback estimation
-        return {
-            "phases": [
-                {
-                    "name": "🎨 Planning & Design",
-                    "tasks": [
-                        {"task": "Requirements gathering and analysis", "hours": 16},
-                        {"task": "System architecture design", "hours": 12},
-                        {"task": "UI/UX design and wireframes", "hours": 20}
-                    ],
-                    "total_hours": 48
-                },
-                {
-                    "name": "💻 Development",
-                    "tasks": [
-                        {"task": "Backend development and API creation", "hours": 80},
-                        {"task": "Frontend development", "hours": 60},
-                        {"task": "Database design and implementation", "hours": 24}
-                    ],
-                    "total_hours": 164
-                },
-                {
-                    "name": "🧪 Testing & QA",
-                    "tasks": [
-                        {"task": "Unit testing", "hours": 24},
-                        {"task": "Integration testing", "hours": 16},
-                        {"task": "Bug fixing and refinement", "hours": 20}
-                    ],
-                    "total_hours": 60
-                },
-                {
-                    "name": "🚀 Deployment",
-                    "tasks": [
-                        {"task": "Production environment setup", "hours": 8},
-                        {"task": "Deployment and configuration", "hours": 8},
-                        {"task": "Post-deployment monitoring", "hours": 4}
-                    ],
-                    "total_hours": 20
+        try:
+            # Clean the response to extract JSON
+            json_str = ai_response
+            
+            # Remove markdown code blocks if present
+            if '```json' in json_str:
+                json_str = json_str.split('```json')[1]
+                if '```' in json_str:
+                    json_str = json_str.split('```')[0]
+            elif '```' in json_str:
+                parts = json_str.split('```')
+                # Find the part that looks like JSON (starts with { and ends with })
+                for part in parts:
+                    part = part.strip()
+                    if part.startswith('{') and part.endswith('}'):
+                        json_str = part
+                        break
+            
+            # Clean up any remaining whitespace
+            json_str = json_str.strip()
+            
+            # Ensure the response is valid JSON
+            estimation_data = json.loads(json_str)
+            
+            # Log the parsed data
+            current_app.logger.debug(f"Parsed estimation data: {json.dumps(estimation_data, indent=2)}")
+            
+            # Ensure we have a dictionary
+            if not isinstance(estimation_data, dict):
+                raise ValueError(f"Expected dictionary, got {type(estimation_data).__name__}")
+            
+            # Validate and clean the response structure
+            result = {
+                "phases": [],
+                "total_hours": 0,
+                "error": ""
+            }
+            
+            # Validate phases
+            if "phases" not in estimation_data or not isinstance(estimation_data["phases"], list):
+                raise ValueError("Missing or invalid 'phases' in response")
+            
+            # Process each phase
+            for phase in estimation_data["phases"]:
+                if not isinstance(phase, dict):
+                    continue
+                    
+                # Ensure phase has required fields
+                clean_phase = {
+                    "name": str(phase.get("name", "Unnamed Phase")),
+                    "tasks": [],
+                    "total_hours": 0
                 }
-            ],
-            "total_hours": 292
-        }
+                
+                # Process tasks
+                if isinstance(phase.get("tasks"), list):
+                    for task in phase["tasks"]:
+                        if not isinstance(task, dict):
+                            continue
+                            
+                        clean_task = {
+                            "task": str(task.get("task", "Unnamed task")),
+                            "hours": max(0, int(float(str(task.get("hours", 0)) or 0)))
+                        }
+                        clean_phase["tasks"].append(clean_task)
+                
+                # Calculate phase total hours if not provided
+                if "total_hours" in phase and isinstance(phase["total_hours"], (int, float)):
+                    clean_phase["total_hours"] = max(0, int(phase["total_hours"]))
+                else:
+                    clean_phase["total_hours"] = sum(task.get("hours", 0) for task in clean_phase["tasks"])
+                
+                result["phases"].append(clean_phase)
+            
+            # Calculate total hours if not provided
+            if "total_hours" in estimation_data and isinstance(estimation_data["total_hours"], (int, float)):
+                result["total_hours"] = max(0, int(estimation_data["total_hours"]))
+            else:
+                result["total_hours"] = sum(phase["total_hours"] for phase in result["phases"])
+            
+            # Ensure we have at least one phase
+            if not result["phases"]:
+                raise ValueError("No valid phases found in the response")
+                
+            return result
+            
+            
+        except json.JSONDecodeError as e:
+            error_msg = f"Failed to parse JSON response: {str(e)}"
+            current_app.logger.error(f"{error_msg}\nResponse was: {ai_response}")
+            error_response["error"] = "Failed to process AI response. The response was not valid JSON."
+            return error_response
+            
+        except Exception as e:
+            error_msg = f"Error processing estimation data: {str(e)}"
+            current_app.logger.error(f"{error_msg}\nResponse was: {ai_response}")
+            error_response["error"] = f"Error processing estimation: {str(e)}"
+            return error_response
+        
     except Exception as e:
-        print(f"Error calling Groq API for estimation: {str(e)}")
-        raise Exception(f"Failed to generate estimation: {str(e)}. Please check your GROQ_API_KEY environment variable.")
+        error_msg = f"Error in generate_estimation: {str(e)}"
+        current_app.logger.error(error_msg, exc_info=True)
+        error_response["error"] = f"Failed to generate estimation: {str(e)}"
+        return error_response
 
 
 def generate_estimation_refinement(project_name: str, project_description: str, current_estimation: Dict, feedback: str) -> Dict:

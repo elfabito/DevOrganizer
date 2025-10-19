@@ -32,33 +32,41 @@ class WeeklySummaryStorage:
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS weekly_summaries (
                 id TEXT PRIMARY KEY,
-                project_name TEXT NOT NULL,
-                created_at TEXT NOT NULL,
+                project_id TEXT NOT NULL,
+                week_start_date TEXT NOT NULL,
                 week_notes TEXT NOT NULL,
-                ai_summary TEXT
+                ai_summary TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             )
         ''')
         
         # Create indexes for faster searches
         cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_summaries_created_at 
+            CREATE INDEX IF NOT EXISTS idx_weekly_summaries_created 
             ON weekly_summaries(created_at DESC)
         ''')
         
         cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_summaries_project 
-            ON weekly_summaries(project_name)
+            CREATE INDEX IF NOT EXISTS idx_weekly_summaries_week 
+            ON weekly_summaries(week_start_date)
+        ''')
+        
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_weekly_summaries_project 
+            ON weekly_summaries(project_id)
         ''')
         
         conn.commit()
         conn.close()
     
-    def create_weekly_summary(self, project_name: str) -> Dict:
+    def create_weekly_summary(self, project_id: str) -> Dict:
         """
         Create a new weekly summary entry for a project
         
         Args:
-            project_name: Name of the project
+            project_id: ID of the project
             
         Returns:
             The created weekly summary dictionary
@@ -66,11 +74,17 @@ class WeeklySummaryStorage:
         conn = sqlite3.connect(self.db_file)
         cursor = conn.cursor()
         
+        # Get current timestamp
+        now = datetime.now().isoformat()
+        week_start = datetime.now().date().strftime('%Y-%m-%d')
+        
         # Create new weekly summary object with empty notes
         new_summary = {
             "id": str(uuid.uuid4()),
-            "project_name": project_name,
-            "created_at": datetime.now().isoformat(),
+            "project_id": project_id,
+            "week_start_date": week_start,
+            "created_at": now,
+            "updated_at": now,
             "week_notes": {
                 "Monday": "",
                 "Tuesday": "",
@@ -83,12 +97,15 @@ class WeeklySummaryStorage:
         
         # Insert into database
         cursor.execute('''
-            INSERT INTO weekly_summaries (id, project_name, created_at, week_notes, ai_summary)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO weekly_summaries 
+            (id, project_id, week_start_date, created_at, updated_at, week_notes, ai_summary)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', (
             new_summary['id'],
-            new_summary['project_name'],
+            new_summary['project_id'],
+            new_summary['week_start_date'],
             new_summary['created_at'],
+            new_summary['updated_at'],
             json.dumps(new_summary['week_notes']),
             new_summary['ai_summary']
         ))
@@ -109,10 +126,11 @@ class WeeklySummaryStorage:
             Weekly summary dictionary or None if not found
         """
         conn = sqlite3.connect(self.db_file)
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, project_name, created_at, week_notes, ai_summary 
+            SELECT id, project_id, week_start_date, created_at, updated_at, week_notes, ai_summary 
             FROM weekly_summaries 
             WHERE id = ?
         ''', (summary_id,))
@@ -121,14 +139,9 @@ class WeeklySummaryStorage:
         conn.close()
         
         if row:
-            return {
-                'id': row[0],
-                'project_name': row[1],
-                'created_at': row[2],
-                'week_notes': json.loads(row[3]),
-                'ai_summary': row[4]
-            }
-        
+            summary = dict(row)
+            summary['week_notes'] = json.loads(summary['week_notes'])
+            return summary
         return None
     
     def get_all_weekly_summaries(self) -> List[Dict]:
@@ -139,62 +152,52 @@ class WeeklySummaryStorage:
             List of weekly summary dictionaries
         """
         conn = sqlite3.connect(self.db_file)
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, project_name, created_at, week_notes, ai_summary 
+            SELECT id, project_id, week_start_date, created_at, updated_at, week_notes, ai_summary 
             FROM weekly_summaries 
-            ORDER BY created_at DESC
+            ORDER BY week_start_date DESC, created_at DESC
         ''')
         
-        rows = cursor.fetchall()
-        conn.close()
-        
         summaries = []
-        for row in rows:
-            summaries.append({
-                'id': row[0],
-                'project_name': row[1],
-                'created_at': row[2],
-                'week_notes': json.loads(row[3]),
-                'ai_summary': row[4]
-            })
-        
+        for row in cursor.fetchall():
+            summary = dict(row)
+            summary['week_notes'] = json.loads(summary['week_notes'])
+            summaries.append(summary)
+            
+        conn.close()
         return summaries
     
-    def get_weekly_summaries_by_project(self, project_name: str) -> List[Dict]:
+    def get_weekly_summaries_by_project(self, project_id: str) -> List[Dict]:
         """
         Get all weekly summaries for a specific project
         
         Args:
-            project_name: Name of the project
+            project_id: ID of the project
             
         Returns:
             List of weekly summary dictionaries for the project
         """
         conn = sqlite3.connect(self.db_file)
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, project_name, created_at, week_notes, ai_summary 
+            SELECT id, project_id, week_start_date, created_at, updated_at, week_notes, ai_summary 
             FROM weekly_summaries 
-            WHERE project_name = ?
-            ORDER BY created_at DESC
-        ''', (project_name,))
-        
-        rows = cursor.fetchall()
-        conn.close()
+            WHERE project_id = ? 
+            ORDER BY week_start_date DESC
+        ''', (project_id,))
         
         summaries = []
-        for row in rows:
-            summaries.append({
-                'id': row[0],
-                'project_name': row[1],
-                'created_at': row[2],
-                'week_notes': json.loads(row[3]),
-                'ai_summary': row[4]
-            })
-        
+        for row in cursor.fetchall():
+            summary = dict(row)
+            summary['week_notes'] = json.loads(summary['week_notes'])
+            summaries.append(summary)
+            
+        conn.close()
         return summaries
     
     def update_weekly_summary(self, summary_id: str, week_notes: Dict = None, ai_summary: str = None) -> bool:
@@ -209,29 +212,35 @@ class WeeklySummaryStorage:
         Returns:
             True if updated, False if not found
         """
+        if week_notes is None and ai_summary is None:
+            return False
+            
         conn = sqlite3.connect(self.db_file)
         cursor = conn.cursor()
         
-        # Build update query dynamically
-        updates = []
-        params = []
+        updates = ["updated_at = ?"]
+        params = [datetime.now().isoformat()]
         
         if week_notes is not None:
-            updates.append('week_notes = ?')
+            updates.append("week_notes = ?")
             params.append(json.dumps(week_notes))
-        
+            
         if ai_summary is not None:
-            updates.append('ai_summary = ?')
+            updates.append("ai_summary = ?")
             params.append(ai_summary)
-        
-        if not updates:
-            conn.close()
+            
+        if len(updates) == 1:  # Only updated_at was added
             return False
-        
+            
         params.append(summary_id)
-        query = f"UPDATE weekly_summaries SET {', '.join(updates)} WHERE id = ?"
         
-        cursor.execute(query, params)
+        query = f"""
+            UPDATE weekly_summaries 
+            SET {', '.join(updates)}
+            WHERE id = ?
+        """
+        
+        cursor.execute(query, tuple(params))
         updated = cursor.rowcount > 0
         
         conn.commit()
@@ -253,8 +262,8 @@ class WeeklySummaryStorage:
         cursor = conn.cursor()
         
         cursor.execute('DELETE FROM weekly_summaries WHERE id = ?', (summary_id,))
-        
         deleted = cursor.rowcount > 0
+        
         conn.commit()
         conn.close()
         

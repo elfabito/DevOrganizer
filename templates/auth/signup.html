@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up - DevOrganizer{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="text-center mb-8">
+            <h1>Create an account</h1>
+            <p>Join DevOrganizer to manage your projects</p>
+        </div>
+        
+        {% if errors and errors.form %}
+        <div class="alert alert-error">
+            {{ errors.form }}
+        </div>
+        {% endif %}
+        
+        <form id="signupForm" method="POST" action="{{ url_for('signup') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" name="name" required 
+                       class="form-input {% if errors and errors.name %}input-error{% endif %}" 
+                       placeholder="John Doe"
+                       value="{{ name or '' }}"
+                       autocomplete="name">
+                {% if errors and errors.name %}
+                <div class="error-message">{{ errors.name }}</div>
+                {% else %}
+                <div id="nameError" class="error-message"></div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required 
+                       class="form-input {% if errors and errors.email %}input-error{% endif %}" 
+                       placeholder="you@example.com"
+                       value="{{ email or '' }}"
+                       autocomplete="email">
+                {% if errors and errors.email %}
+                <div class="error-message">{{ errors.email }}</div>
+                {% else %}
+                <div id="emailError" class="error-message"></div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <label for="password">Password</label>
+                    <span id="passwordStrengthText" style="font-size: 12px;">Strength: Very Weak</span>
+                </div>
+                <input type="password" id="password" name="password" required 
+                       class="form-input {% if errors and errors.password %}input-error{% endif %}" 
+                       placeholder="••••••••"
+                       autocomplete="new-password">
+                
+                <div style="display: flex; gap: 4px; margin: 8px 0 12px;">
+                    <div class="strength-bar" style="height: 4px; border-radius: 2px; background: #e5e7eb; flex: 1;"></div>
+                    <div class="strength-bar" style="height: 4px; border-radius: 2px; background: #e5e7eb; flex: 1;"></div>
+                    <div class="strength-bar" style="height: 4px; border-radius: 2px; background: #e5e7eb; flex: 1;"></div>
+                    <div class="strength-bar" style="height: 4px; border-radius: 2px; background: #e5e7eb; flex: 1;"></div>
+                    <div class="strength-bar" style="height: 4px; border-radius: 2px; background: #e5e7eb; flex: 1;"></div>
+                </div>
+                
+                <div style="font-size: 13px; color: var(--gray); margin-bottom: 15px;">
+                    <p style="margin-bottom: 5px;">Password must contain:</p>
+                    <ul style="list-style-type: disc; padding-left: 20px; margin: 0;">
+                        <li>At least 8 characters</li>
+                        <li>Uppercase and lowercase letters</li>
+                        <li>At least one number</li>
+                    </ul>
+                </div>
+                <div id="passwordError" class="error-message"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required 
+                       class="form-input {% if errors and errors.confirmPassword %}input-error{% endif %}" 
+                       placeholder="••••••••"
+                       autocomplete="new-password">
+                {% if errors and errors.confirmPassword %}
+                <div class="error-message">{{ errors.confirmPassword }}</div>
+                {% else %}
+                <div id="confirmPasswordError" class="error-message"></div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group" style="display: flex; align-items: flex-start; margin: 20px 0;">
+                <input type="checkbox" id="terms" name="terms" required
+                       style="margin-top: 2px; margin-right: 8px;">
+                <label for="terms" style="font-size: 14px; line-height: 1.4;">
+                    I agree to the <a href="#" style="color: var(--primary); text-decoration: none;">Terms of Service</a> and 
+                    <a href="#" style="color: var(--primary); text-decoration: none;">Privacy Policy</a>
+                </label>
+            </div>
+            <div id="termsError" class="error-message"></div>
+            
+            <div id="formError" class="error-message" style="text-align: center; margin: 15px 0;"></div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 16px;">
+                Create Account
+            </button>
+            
+            <p style="text-align: center; font-size: 14px; color: var(--gray);">
+                Already have an account? 
+                <a href="{{ url_for('login') }}" style="color: var(--primary); text-decoration: none;">
+                    Sign in
+                </a>
+            </p>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Password strength indicator
+function checkPasswordStrength(password) {
+    let score = 0;
+    
+    // Length check
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    
+    // Complexity checks
+    if (/[A-Z]/.test(password)) score++; // Has uppercase
+    if (/[a-z]/.test(password)) score++; // Has lowercase
+    if (/[0-9]/.test(password)) score++; // Has number
+    if (/[^A-Za-z0-9]/.test(password)) score++; // Has special char
+    
+    // Cap the score at 5 for the visual indicator
+    return Math.min(score, 5);
+}
+
+function updatePasswordStrengthIndicator(strength) {
+    const strengthText = document.getElementById('passwordStrengthText');
+    const strengthBars = document.querySelectorAll('.strength-bar');
+    
+    if (!strengthText || !strengthBars.length) return;
+    
+    // Update text
+    let text, color;
+    if (strength <= 1) {
+        text = 'Very Weak';
+        color = 'bg-red-500';
+    } else if (strength <= 2) {
+        text = 'Weak';
+        color = 'bg-orange-500';
+    } else if (strength <= 3) {
+        text = 'Moderate';
+        color = 'bg-yellow-500';
+    } else if (strength <= 4) {
+        text = 'Strong';
+        color = 'bg-blue-500';
+    } else {
+        text = 'Very Strong';
+        color = 'bg-green-500';
+    }
+    
+    strengthText.textContent = `Strength: ${text}`;
+    strengthText.className = `text-xs ${color === 'bg-red-500' ? 'text-red-600' : 
+                                     color === 'bg-orange-500' ? 'text-orange-600' :
+                                     color === 'bg-yellow-500' ? 'text-yellow-600' :
+                                     color === 'bg-blue-500' ? 'text-blue-600' : 'text-green-600'}`;
+    
+    // Update bars
+    strengthBars.forEach((bar, index) => {
+        bar.className = `h-1 rounded ${index < strength ? color : 'bg-gray-200'}`;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if user is already logged in
+    const token = localStorage.getItem('token');
+    if (token) {
+        // If already logged in, redirect to home
+        window.location.href = '/';
+        return;
+    }
+    
+    // Initialize password strength indicator
+    const passwordInput = document.getElementById('password');
+    if (passwordInput) {
+        passwordInput.addEventListener('input', () => {
+            const strength = checkPasswordStrength(passwordInput.value);
+            updatePasswordStrengthIndicator(strength);
+        });
+    }
+    
+    // Focus the name field on page load
+    const nameInput = document.getElementById('name');
+    if (nameInput) {
+        nameInput.focus();
+    }
+});
+
+// Handle form submission
+document.addEventListener('DOMContentLoaded', () => {
+    const signupForm = document.getElementById('signupForm');
+    if (!signupForm) return;
+    
+    signupForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // Get form and form data
+    const form = e.target;
+    const formData = new FormData(form);
+    const name = formData.get('name').trim();
+    const email = formData.get('email').trim().toLowerCase();
+    const password = formData.get('password');
+    const confirmPassword = formData.get('confirmPassword');
+    const termsAccepted = formData.get('terms') === 'on';
+    
+    // Reset error messages
+    document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
+    
+    // Client-side validation
+    let isValid = true;
+    
+    // Name validation
+    if (!name) {
+        document.getElementById('nameError').textContent = 'Name is required';
+        isValid = false;
+    } else if (name.length < 2) {
+        document.getElementById('nameError').textContent = 'Name must be at least 2 characters';
+        isValid = false;
+    } else if (name.length > 100) {
+        document.getElementById('nameError').textContent = 'Name is too long';
+        isValid = false;
+    }
+    
+    // Email validation
+    if (!email) {
+        document.getElementById('emailError').textContent = 'Email is required';
+        isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        document.getElementById('emailError').textContent = 'Please enter a valid email address';
+        isValid = false;
+    }
+    
+    // Password validation
+    if (!password) {
+        document.getElementById('passwordError').textContent = 'Password is required';
+        isValid = false;
+    } else if (password.length < 8) {
+        document.getElementById('passwordError').textContent = 'Password must be at least 8 characters long';
+        isValid = false;
+    } else if (!/[A-Z]/.test(password)) {
+        document.getElementById('passwordError').textContent = 'Password must contain at least one uppercase letter';
+        isValid = false;
+    } else if (!/[a-z]/.test(password)) {
+        document.getElementById('passwordError').textContent = 'Password must contain at least one lowercase letter';
+        isValid = false;
+    } else if (!/[0-9]/.test(password)) {
+        document.getElementById('passwordError').textContent = 'Password must contain at least one number';
+        isValid = false;
+    }
+    
+    // Confirm password validation
+    if (password !== confirmPassword) {
+        document.getElementById('confirmPasswordError').textContent = 'Passwords do not match';
+        isValid = false;
+    }
+    
+    // Terms validation
+    if (!termsAccepted) {
+        document.getElementById('termsError').textContent = 'You must accept the terms and conditions';
+        isValid = false;
+    }
+    
+    if (!isValid) {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+        }
+        return;
+    }
+    
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'  // Helps identify AJAX requests
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Signup failed. Please try again.');
+        }
+        
+        // If we're here, signup was successful
+        if (data.token) {
+            // Show success message
+            const formError = document.getElementById('formError');
+            formError.textContent = 'Account created successfully! Redirecting...';
+            formError.className = 'text-green-600 text-center text-sm mt-2';
+            
+            // Store the token and user data in localStorage for client-side use
+            localStorage.setItem('token', data.token);
+            if (data.user) {
+                localStorage.setItem('user', JSON.stringify(data.user));
+            }
+            
+            // The server will set the HTTP-only cookie, but we also set it here for immediate client-side use
+            document.cookie = `token=${data.token}; Path=/; SameSite=Lax`;
+            
+            // Redirect to the provided URL or home page
+            const redirectUrl = data.redirect || '/';
+            
+            // Add a small delay to ensure everything is saved
+            setTimeout(() => {
+                window.location.href = redirectUrl;
+            }, 500);
+        }
+        
+    } catch (error) {
+        console.error('Signup error:', error);
+        const formError = document.getElementById('formError');
+        
+        // Handle specific error cases
+        let errorMessage = 'An error occurred during signup. Please try again.';
+        if (error.message.includes('already exists')) {
+            errorMessage = 'An account with this email already exists. Please log in instead.';
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        
+        formError.textContent = errorMessage;
+        formError.className = 'error-message text-center';
+        
+        // Clear password fields on error
+        document.getElementById('password').value = '';
+        document.getElementById('confirmPassword').value = '';
+        document.getElementById('password').focus();
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+    }
+    });
+});
+</script>
+{% endblock %}

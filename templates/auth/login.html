@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Login - DevOrganizer{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="text-center mb-8">
+            <h1>Welcome back</h1>
+            <p>Sign in to your account</p>
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-danger" style="color: #dc3545; background-color: #f8d7da; border-color: #f5c6cb; padding: 0.75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: 0.25rem;">
+                    {{ messages[0] }}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <form id="loginForm" method="POST" action="{{ url_for('web_login') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required 
+                       class="form-input" 
+                       placeholder="you@example.com"
+                       autocomplete="username"
+                       value="{{ request.form.email if request.form.email else '' }}">
+                <div id="emailError" class="error-message"></div>
+            </div>
+            
+            <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <label for="password">Password</label>
+                </div>
+                <input type="password" id="password" name="password" required 
+                       class="form-input" 
+                       placeholder="••••••••"
+                       autocomplete="current-password">
+                <div id="passwordError" class="error-message"></div>
+            </div>
+            
+            <div class="form-group" style="display: flex; align-items: center; margin: 20px 0;">
+                <input type="checkbox" id="rememberMe" name="remember_me" 
+                       style="margin-right: 8px;"
+                       {% if request.form.remember_me %}checked{% endif %}>
+                <label for="rememberMe" style="margin: 0; font-size: 14px;">
+                    Remember me
+                </label>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 16px;">
+                Sign in
+            </button>
+            
+            <p style="text-align: center; font-size: 14px; color: var(--gray);">
+                Don't have an account? 
+                <a href="{{ url_for('web_signup') }}" style="color: var(--primary); text-decoration: none;">
+                    Sign up
+                </a>
+            </p>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Focus the email field on page load
+    const emailInput = document.getElementById('email');
+    if (emailInput) {
+        emailInput.focus();
+    }
+});
+
+// Simple client-side validation
+document.getElementById('loginForm')?.addEventListener('submit', function(e) {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    let isValid = true;
+    
+    // Reset error messages
+    document.querySelectorAll('.error-message').forEach(el => {
+        el.textContent = '';
+        el.style.display = 'none';
+    });
+    
+    if (!email) {
+        const emailError = document.getElementById('emailError');
+        emailError.textContent = 'Email is required';
+        emailError.style.display = 'block';
+        isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        const emailError = document.getElementById('emailError');
+        emailError.textContent = 'Please enter a valid email address';
+        emailError.style.display = 'block';
+        isValid = false;
+    }
+    
+    if (!password) {
+        const passwordError = document.getElementById('passwordError');
+        passwordError.textContent = 'Password is required';
+        passwordError.style.display = 'block';
+        isValid = false;
+    }
+    
+    if (!isValid) {
+        e.preventDefault();
+    }
+});
+</script>
+{% endblock %}
