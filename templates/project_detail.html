@@ -15,7 +15,7 @@
     .collapsible-section {
         margin-bottom: 15px;
     }
-    
+
     .collapsible-header {
         cursor: pointer;
         padding: 10px;
@@ -26,21 +26,26 @@
         justify-content: space-between;
         align-items: center;
     }
-    
+
     .collapsible-header:hover {
         background-color: #e9e9e9;
     }
-    
+
     .collapsible-header:after {
         content: '▼';
         font-size: 12px;
         transition: transform 0.3s ease;
+        transform: rotate(0deg);
     }
-    
+
+    .collapsible-header.expanded:after {
+        transform: rotate(0deg);
+    }
+
     .collapsible-header.collapsed:after {
         transform: rotate(-90deg);
     }
-    
+
     .collapsible-content {
         padding: 15px;
         border: 1px solid #ddd;
@@ -48,10 +53,11 @@
         border-radius: 0 0 4px 4px;
         display: none;
     }
-    
+
     .collapsible-content.expanded {
         display: block;
     }
+
     .project-header {
         background: linear-gradient(135deg, var(--primary), var(--secondary));
         color: var(--white);
@@ -175,16 +181,36 @@
     }
 
     .category-header {
-        background: var(--primary);
-        color: var(--white);
-        padding: 16px 20px;
+        cursor: pointer;
+        padding: 12px 16px;
+        background-color: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         font-weight: 600;
         font-size: 16px;
         transition: background 0.2s;
     }
 
     .category-header:hover {
-        background: var(--secondary);
+        background-color: #e9e9e9;
+    }
+
+    .category-header:after {
+        content: '▼';
+        font-size: 12px;
+        transition: transform 0.3s ease;
+        transform: rotate(0deg);
+    }
+
+    .category-header.expanded:after {
+        transform: rotate(0deg);
+    }
+
+    .category-header.collapsed:after {
+        transform: rotate(-90deg);
     }
 
     .category-questions {
@@ -250,19 +276,36 @@
     }
 
     .phase-header {
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        color: var(--white);
-        padding: 16px 20px;
+        cursor: pointer;
+        padding: 12px 16px;
+        background-color: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         font-weight: 600;
         font-size: 18px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        transition: opacity 0.2s;
+        transition: background 0.2s;
     }
 
     .phase-header:hover {
-        opacity: 0.9;
+        background-color: #e9e9e9;
+    }
+
+    .phase-header:after {
+        content: '▼';
+        font-size: 12px;
+        transition: transform 0.3s ease;
+        transform: rotate(0deg);
+    }
+
+    .phase-header.expanded:after {
+        transform: rotate(0deg);
+    }
+
+    .phase-header.collapsed:after {
+        transform: rotate(-90deg);
     }
 
     .phase-tasks {
@@ -414,6 +457,7 @@
             opacity: 0;
             transform: translateY(10px);
         }
+
         to {
             transform: translateX(0);
             opacity: 1;
@@ -443,6 +487,7 @@
             transform: translateX(400px);
             opacity: 0;
         }
+
         to {
             transform: translateX(0);
             opacity: 1;
@@ -511,22 +556,22 @@
             <h3>❓ Key Technical Questions</h3>
             <div class="questions-grid">
                 {% for category, questions in project.ai_data.questions.items() %}
-                    {% if questions|length > 0 %}
-                    <div class="question-category">
-                        <div class="category-header" data-category="{{ category }}" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                            <span>{{ category }}</span>
-                            <span class="toggle-icon" style="transition: transform 0.3s;">▼</span>
-                        </div>
-                        <div class="category-questions">
-                            {% for question in questions %}
-                            <div class="question-item" data-question="{{ question }}" onclick="copyToClipboard(this.dataset.question, 'Question');">
-                                <span class="question-icon">❓</span>
-                                <span>{{ question }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
+                {% if questions|length > 0 %}
+                <div class="question-category">
+                    <div class="category-header" data-category="{{ category }}">
+                        <span>{{ category }}</span>
                     </div>
-                    {% endif %}
+                    <div class="category-questions">
+                        {% for question in questions %}
+                        <div class="question-item" data-question="{{ question }}"
+                            onclick="copyToClipboard(this.dataset.question, 'Question');">
+                            <span class="question-icon">❓</span>
+                            <span>{{ question }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
                 {% endfor %}
             </div>
         </div>
@@ -538,77 +583,76 @@
             <h3>📋 ClickUp Task Plan</h3>
             <div class="task-plan-box">
                 {% if project.ai_data.clickup_plan is mapping and project.ai_data.clickup_plan.phases %}
-                    {% for phase in project.ai_data.clickup_plan.phases %}
-                    <div class="phase-card">
-                        <div class="phase-header" data-phase-id="phase-{{ loop.index }}" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                            <span>{{ phase.name }}</span>
-                            <span class="toggle-icon" style="transition: transform 0.3s;">▼</span>
-                        </div>
-                        <div class="phase-tasks">
-                            {% for task in phase.tasks %}
-                            <div class="task-card priority-{{ task.priority }}" onclick="copyToClipboard('{{ task.task|replace("'", "\\'") }}', 'Task')">
-                                <div class="task-checkbox"></div>
-                                <div class="task-text">{{ task.task }}</div>
-                                <span class="task-priority {{ task.priority }}">{{ task.priority }}</span>
-                            </div>
-                            {% endfor %}
-                        </div>
+                {% for phase in project.ai_data.clickup_plan.phases %}
+                <div class="phase-card">
+                    <div class="phase-header" data-phase-id="phase-{{ loop.index }}">
+                        <span>{{ phase.name }}</span>
                     </div>
-                    {% endfor %}
+                    <div class="phase-tasks">
+                        {% for task in phase.tasks %}
+                        <div class="task-card priority-{{ task.priority }}"
+                            onclick="copyToClipboard('{{ task.task|replace("'", "\\'") }}', 'Task')">
+                            <div class="task-checkbox"></div>
+                            <div class="task-text">{{ task.task }}</div>
+                            <span class="task-priority {{ task.priority }}">{{ task.priority }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
                 {% else %}
-                    <!-- Fallback for old text format -->
-                    <div style="background: #1f2937; color: #f3f4f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8;">{{ project.ai_data.clickup_plan }}</div>
+                <!-- Fallback for old text format -->
+                <div
+                    style="background: #1f2937; color: #f3f4f6; padding: 24px; border-radius: 12px; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.8;">
+                    {{ project.ai_data.clickup_plan }}</div>
                 {% endif %}
             </div>
 
             <!-- ClickUp Integration Section -->
-            <div class="section" style="margin-top: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px; border-radius: 16px; color: white;">
+            <div class="section"
+                style="margin-top: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px; border-radius: 16px; color: white;">
                 <h3 style="color: white; margin-bottom: 8px;">🚀 Export to ClickUp</h3>
                 <p style="opacity: 0.9; margin-bottom: 24px;">Send these tasks directly to your ClickUp workspace</p>
-                
+
                 <!-- Status/Info Message -->
-                <div id="clickupConfigStatus" style="margin-bottom: 20px; padding: 12px 16px; background: rgba(255,255,255,0.1); border-radius: 8px; display: none;">
-                    <span id="configStatusIcon">🔄</span> <span id="configStatusText">Verificando configuración...</span>
+                <div id="clickupConfigStatus"
+                    style="margin-bottom: 20px; padding: 12px 16px; background: rgba(255,255,255,0.1); border-radius: 8px; display: none;">
+                    <span id="configStatusIcon">🔄</span> <span id="configStatusText">Verificando
+                        configuración...</span>
                 </div>
 
                 <!-- Workspace Selection -->
                 <div id="workspaceSection" style="display: none; margin-bottom: 20px;">
-                    <label for="workspaceSelect" style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">
+                    <label for="workspaceSelect"
+                        style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">
                         Select Workspace:
                     </label>
-                    <select 
-                        id="workspaceSelect" 
-                        onchange="loadClickUpSpaces()"
-                        style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;"
-                    >
+                    <select id="workspaceSelect" onchange="loadClickUpSpaces()"
+                        style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;">
                         <option value="">Loading workspaces...</option>
                     </select>
                 </div>
 
                 <!-- Space Selection -->
                 <div id="spaceSection" style="display: none; margin-bottom: 20px;">
-                    <label for="spaceSelect" style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">
+                    <label for="spaceSelect"
+                        style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">
                         Select Space (Project):
                     </label>
-                    <select 
-                        id="spaceSelect" 
-                        onchange="loadClickUpFolders()"
-                        style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;"
-                    >
+                    <select id="spaceSelect" onchange="loadClickUpFolders()"
+                        style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;">
                         <option value="">Select a workspace first...</option>
                     </select>
                 </div>
 
                 <!-- Folder Selection (Optional) -->
                 <div id="folderSection" style="display: none; margin-bottom: 20px;">
-                    <label for="folderSelect" style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">
+                    <label for="folderSelect"
+                        style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">
                         Select Folder <span style="opacity: 0.7; font-weight: 400; font-size: 13px;">(opcional)</span>:
                     </label>
-                    <select 
-                        id="folderSelect" 
-                        onchange="loadClickUpLists()"
-                        style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;"
-                    >
+                    <select id="folderSelect" onchange="loadClickUpLists()"
+                        style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;">
                         <option value="">Select a space first...</option>
                     </select>
                     <small style="display: block; margin-top: 8px; opacity: 0.8;">
@@ -621,29 +665,24 @@
                     <label for="listSelect" style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">
                         Select List:
                     </label>
-                    <select 
-                        id="listSelect"
-                        style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;"
-                    >
+                    <select id="listSelect"
+                        style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;">
                         <option value="">Select a space first...</option>
                     </select>
                 </div>
 
                 <!-- Create Tasks Button -->
                 <div id="createTasksSection" style="display: none;">
-                    <button 
-                        onclick="createClickUpTasks()" 
-                        class="btn"
+                    <button onclick="createClickUpTasks()" class="btn"
                         style="width: 100%; background: white; color: #667eea; padding: 16px; border: none; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; transition: transform 0.2s;"
-                        onmouseover="this.style.transform='scale(1.02)'"
-                        onmouseout="this.style.transform='scale(1)'"
-                    >
+                        onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                         ✨ Create Tasks in ClickUp
                     </button>
                 </div>
 
                 <!-- Status Messages -->
-                <div id="clickupStatus" style="margin-top: 16px; padding: 12px; border-radius: 8px; display: none;"></div>
+                <div id="clickupStatus" style="margin-top: 16px; padding: 12px; border-radius: 8px; display: none;">
+                </div>
             </div>
         </div>
     </div>
@@ -652,39 +691,43 @@
     <div id="weekly-tab" class="tab-content">
         <div class="section">
             <h3>📝 Weekly Summary</h3>
-            
-            {% if weekly_summaries and weekly_summaries|length > 0 %}
-                <!-- Existing Summaries -->
-                <div style="margin-bottom: 24px;">
-                    <h4 style="font-size: 16px; color: var(--gray); margin-bottom: 16px;">Previous Summaries</h4>
-                    <div style="display: grid; gap: 16px;">
-                        {% for summary in weekly_summaries %}
-                        <div class="phase-card" style="cursor: pointer;" onclick="window.location.href='/weekly-summary/{{ summary.id }}';">
 
-                            <div style="padding: 16px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                    <strong style="color: var(--dark);">Week of {{ summary.created_at[:10] }}</strong>
-                                    <span style="font-size: 12px; color: var(--gray);">{{ summary.created_at[:10] }}</span>
-                                </div>
-                                <div style="color: var(--gray); font-size: 14px; line-height: 1.6;">
-                                    {% if summary.ai_summary %}
-                                        {{ summary.ai_summary[:200] }}...
-                                    {% else %}
-                                        <em>No summary generated yet. Click to add notes.</em>
-                                    {% endif %}
-                                </div>
+            {% if weekly_summaries and weekly_summaries|length > 0 %}
+            <!-- Existing Summaries -->
+            <div style="margin-bottom: 24px;">
+                <h4 style="font-size: 16px; color: var(--gray); margin-bottom: 16px;">Previous Summaries</h4>
+                <div style="display: grid; gap: 16px;">
+                    {% for summary in weekly_summaries %}
+                    <div class="phase-card" style="cursor: pointer;"
+                        onclick="window.location.href='/weekly-summary/{{ summary.id }}';">
+
+                        <div style="padding: 16px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <strong style="color: var(--dark);">Week of {{ summary.created_at[:10] }}</strong>
+                                <span style="font-size: 12px; color: var(--gray);">{{ summary.created_at[:10] }}</span>
+                            </div>
+                            <div style="color: var(--gray); font-size: 14px; line-height: 1.6;">
+                                {% if summary.ai_summary %}
+                                {{ summary.ai_summary[:200] }}...
+                                {% else %}
+                                <em>No summary generated yet. Click to add notes.</em>
+                                {% endif %}
                             </div>
                         </div>
-                        {% endfor %}
                     </div>
+                    {% endfor %}
                 </div>
+            </div>
             {% endif %}
 
             <!-- Create New Summary Button -->
-            <div style="text-align: center; padding: 40px 20px; background: var(--light-gray); border-radius: 12px; border: 2px dashed var(--border);">
+            <div
+                style="text-align: center; padding: 40px 20px; background: var(--light-gray); border-radius: 12px; border: 2px dashed var(--border);">
                 <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
                 <h4 style="margin-bottom: 12px; color: var(--dark);">Track Your Weekly Progress</h4>
-                <p style="color: var(--gray); margin-bottom: 20px;">Create a new weekly summary to log your daily work and generate AI insights</p>
+                <p style="color: var(--gray); margin-bottom: 20px;">Create a new weekly summary to log your daily work
+                    and generate AI insights</p>
                 <button class="btn btn-primary" onclick="createWeeklySummaryForProject()">
                     ➕ Create New Weekly Summary
                 </button>
@@ -696,75 +739,76 @@
     <div id="features-tab" class="tab-content">
         <div class="section">
             <h3>💡 Suggest New Feature</h3>
-            
+
             <div style="background: var(--light-gray); padding: 24px; border-radius: 12px; margin-bottom: 24px;">
-                <h4 style="font-size: 20px; color: var(--dark); margin-bottom: 8px;">Current Audit from Your Project</h4>
+                <h4 style="font-size: 20px; color: var(--dark); margin-bottom: 8px;">Current Audit from Your Project
+                </h4>
                 <p style="font-size: 14px; color: var(--gray); margin-bottom: 20px;">
                     (We recommend writing a complete audit or current status of your project here.)
                 </p>
-                
+
                 <div style="margin-bottom: 20px;">
-                    <label for="auditTextarea" style="display: block; font-weight: 600; color: var(--dark); margin-bottom: 8px;">
+                    <label for="auditTextarea"
+                        style="display: block; font-weight: 600; color: var(--dark); margin-bottom: 8px;">
                         Project Audit:
                     </label>
-                    <textarea 
-                        id="auditTextarea" 
-                        rows="10" 
+                    <textarea id="auditTextarea" rows="10"
                         placeholder="Describe the current state of your project, including completed features, current challenges, technical stack, user feedback, and any other relevant information..."
-                        style="width: 100%; padding: 16px; border: 2px solid var(--border); border-radius: 8px; font-size: 15px; font-family: inherit; line-height: 1.6; resize: vertical; min-height: 200px;"
-                    >{% if feature_suggestions %}{{ feature_suggestions.audit_text }}{% endif %}</textarea>
+                        style="width: 100%; padding: 16px; border: 2px solid var(--border); border-radius: 8px; font-size: 15px; font-family: inherit; line-height: 1.6; resize: vertical; min-height: 200px;">{%
+                        if feature_suggestions %}{{ feature_suggestions.audit_text }}{% endif %}</textarea>
                 </div>
-                
-                <button 
-                    id="generateSuggestionsBtn" 
-                    class="btn btn-primary" 
-                    onclick="generateFeatureSuggestions()"
-                    style="width: 100%;"
-                >
+
+                <button id="generateSuggestionsBtn" class="btn btn-primary" onclick="generateFeatureSuggestions()"
+                    style="width: 100%;">
                     ✨ Generate Feature Suggestions
                 </button>
             </div>
 
             <!-- Loading indicator -->
-            <div id="suggestionsLoading" style="display: none; text-align: center; padding: 40px; background: var(--white); border-radius: 12px; border: 2px solid var(--border);">
+            <div id="suggestionsLoading"
+                style="display: none; text-align: center; padding: 40px; background: var(--white); border-radius: 12px; border: 2px solid var(--border);">
                 <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
                 <h4 style="color: var(--dark); margin-bottom: 8px;">Generating Suggestions...</h4>
                 <p style="color: var(--gray);">AI is analyzing your project audit</p>
             </div>
 
             <!-- Error message -->
-            <div id="suggestionsError" style="display: none; padding: 20px; background: #fee2e2; border: 2px solid #ef4444; border-radius: 8px; color: #dc2626; margin-bottom: 24px;">
+            <div id="suggestionsError"
+                style="display: none; padding: 20px; background: #fee2e2; border: 2px solid #ef4444; border-radius: 8px; color: #dc2626; margin-bottom: 24px;">
                 <strong>Error:</strong> <span id="errorMessage"></span>
             </div>
 
             <!-- Suggestions results -->
             <div id="suggestionsResults" style="{% if not feature_suggestions %}display: none;{% endif %}">
-                <h4 style="font-size: 18px; color: var(--dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                <h4
+                    style="font-size: 18px; color: var(--dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
                     <span>🎯</span>
                     AI-Generated Feature Suggestions
                 </h4>
-                
+
                 <div id="suggestionsList" style="display: grid; gap: 16px;">
                     {% if feature_suggestions and feature_suggestions.suggestions %}
-                        {% for suggestion in feature_suggestions.suggestions %}
-                        <div class="phase-card">
-                            <div style="padding: 20px; display: flex; align-items: start; gap: 16px;">
-                                <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">
-                                    {{ loop.index }}
-                                </div>
-                                <div style="flex: 1;">
-                                    <p style="color: var(--dark); font-size: 15px; line-height: 1.7; margin: 0;">
-                                        {{ suggestion }}
-                                    </p>
-                                </div>
+                    {% for suggestion in feature_suggestions.suggestions %}
+                    <div class="phase-card">
+                        <div style="padding: 20px; display: flex; align-items: start; gap: 16px;">
+                            <div
+                                style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">
+                                {{ loop.index }}
+                            </div>
+                            <div style="flex: 1;">
+                                <p style="color: var(--dark); font-size: 15px; line-height: 1.7; margin: 0;">
+                                    {{ suggestion }}
+                                </p>
                             </div>
                         </div>
-                        {% endfor %}
+                    </div>
+                    {% endfor %}
                     {% endif %}
                 </div>
 
                 {% if feature_suggestions %}
-                <div style="margin-top: 16px; padding: 16px; background: var(--light-gray); border-radius: 8px; font-size: 13px; color: var(--gray);">
+                <div
+                    style="margin-top: 16px; padding: 16px; background: var(--light-gray); border-radius: 8px; font-size: 13px; color: var(--gray);">
                     <strong>Generated:</strong> {{ feature_suggestions.created_at[:19].replace('T', ' ') }}
                 </div>
                 {% endif %}
@@ -790,7 +834,7 @@
             const notification = document.getElementById('copyNotification');
             notification.textContent = `✅ ${type} copied to clipboard!`;
             notification.classList.add('show');
-            
+
             setTimeout(() => {
                 notification.classList.remove('show');
             }, 2000);
@@ -804,7 +848,7 @@
     function toggleBrief() {
         const briefText = document.getElementById('briefText');
         const btn = document.getElementById('readMoreBtn');
-        
+
         if (briefText.classList.contains('collapsed')) {
             briefText.classList.remove('collapsed');
             btn.innerHTML = '👆 Read Less';
@@ -820,15 +864,15 @@
         document.querySelectorAll('.tab-content').forEach(tab => {
             tab.classList.remove('active');
         });
-        
+
         // Remove active class from all buttons
         document.querySelectorAll('.tab-button').forEach(btn => {
             btn.classList.remove('active');
         });
-        
+
         // Show selected tab
         document.getElementById(tabName + '-tab').classList.add('active');
-        
+
         // Activate corresponding button
         event.target.closest('.tab-button').classList.add('active');
     }
@@ -838,17 +882,17 @@
         console.log('toggleCategory called with:', headerElement);
         const questionsDiv = headerElement.nextElementSibling;
         const toggleIcon = headerElement.querySelector('.toggle-icon');
-        
+
         if (questionsDiv && questionsDiv.classList.contains('category-questions')) {
             const isHidden = questionsDiv.style.display === 'none';
             questionsDiv.style.display = isHidden ? 'block' : 'none';
             if (toggleIcon) {
                 toggleIcon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0)';
             }
-            
+
             // Save the state
-            const sectionId = headerElement.closest('.question-category').getAttribute('data-section-id') || 
-                             `category-${headerElement.textContent.trim().toLowerCase().replace(/\s+/g, '-')}`;
+            const sectionId = headerElement.closest('.question-category').getAttribute('data-section-id') ||
+                `category-${headerElement.textContent.trim().toLowerCase().replace(/\s+/g, '-')}`;
             saveSectionState(sectionId, isHidden);
         }
     }
@@ -884,8 +928,8 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ 
-                    project_name: '{{ project.name }}' 
+                body: JSON.stringify({
+                    project_id: '{{ project.id }}'
                 })
             });
 
@@ -954,7 +998,7 @@
             // Display suggestions
             if (data.suggestions && data.suggestions.length > 0) {
                 suggestionsList.innerHTML = '';
-                
+
                 data.suggestions.forEach((suggestion, index) => {
                     const suggestionCard = document.createElement('div');
                     suggestionCard.className = 'phase-card';
@@ -1000,7 +1044,7 @@
         statusDiv.style.background = isError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)';
         statusDiv.style.color = 'white';
         statusDiv.innerHTML = message;
-        
+
         if (!isError) {
             setTimeout(() => {
                 statusDiv.style.display = 'none';
@@ -1012,7 +1056,7 @@
         const statusDiv = document.getElementById('clickupConfigStatus');
         const iconSpan = document.getElementById('configStatusIcon');
         const textSpan = document.getElementById('configStatusText');
-        
+
         statusDiv.style.display = 'block';
         statusDiv.style.background = isError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.1)';
         iconSpan.textContent = icon;
@@ -1022,7 +1066,7 @@
     async function loadClickUpWorkspaces() {
         try {
             showStatus('🔄 Loading workspaces...');
-            
+
             // Token must be configured in .env - no manual input
             const response = await fetch('/clickup/workspaces', {
                 method: 'GET'
@@ -1037,7 +1081,7 @@
             // Populate workspace dropdown
             const workspaceSelect = document.getElementById('workspaceSelect');
             workspaceSelect.innerHTML = '<option value="">Select a workspace...</option>';
-            
+
             data.workspaces.forEach(workspace => {
                 const option = document.createElement('option');
                 option.value = workspace.id;
@@ -1059,14 +1103,14 @@
     async function loadClickUpSpaces() {
         const workspaceSelect = document.getElementById('workspaceSelect');
         const teamId = workspaceSelect.value;
-        
+
         if (!teamId) {
             return;
         }
 
         try {
             showStatus('🔄 Loading spaces...');
-            
+
             const response = await fetch(`/clickup/spaces/${teamId}`, {
                 method: 'GET'
             });
@@ -1080,7 +1124,7 @@
             // Populate space dropdown
             const spaceSelect = document.getElementById('spaceSelect');
             spaceSelect.innerHTML = '<option value="">Select a space...</option>';
-            
+
             data.spaces.forEach(space => {
                 const option = document.createElement('option');
                 option.value = space.id;
@@ -1100,7 +1144,7 @@
     async function loadClickUpFolders() {
         const spaceSelect = document.getElementById('spaceSelect');
         const spaceId = spaceSelect.value;
-        
+
         if (!spaceId) {
             return;
         }
@@ -1113,7 +1157,7 @@
 
         try {
             showStatus('🔄 Loading folders and lists...');
-            
+
             // Try to load folders first
             const foldersResponse = await fetch(`/clickup/folders/${spaceId}`, {
                 method: 'GET'
@@ -1125,7 +1169,7 @@
                 // Populate folder dropdown
                 const folderSelect = document.getElementById('folderSelect');
                 folderSelect.innerHTML = '<option value="">-- Sin folder (listas directas) --</option>';
-                
+
                 foldersData.folders.forEach(folder => {
                     const option = document.createElement('option');
                     option.value = folder.id;
@@ -1137,7 +1181,7 @@
                 document.getElementById('folderSection').style.display = 'block';
                 showStatus('✅ Folders loaded! Select a folder or load direct lists.');
             }
-            
+
             // Always try to load folderless lists
             await loadClickUpLists();
 
@@ -1150,10 +1194,10 @@
     async function loadSharedLists() {
         const workspaceSelect = document.getElementById('workspaceSelect');
         const teamId = workspaceSelect.value;
-        
+
         try {
             showStatus('🔄 Loading shared lists...');
-            
+
             const response = await fetch(`/clickup/shared-lists/${teamId}`, {
                 method: 'GET'
             });
@@ -1170,13 +1214,13 @@
             // Populate list dropdown with shared lists
             const listSelect = document.getElementById('listSelect');
             listSelect.innerHTML = '<option value="">Select a shared list...</option>';
-            
+
             if (data.lists.length === 0) {
                 listSelect.innerHTML = '<option value="">No shared lists found</option>';
                 showStatus('⚠️ No shared lists found in this workspace.', true);
                 return;
             }
-            
+
             data.lists.forEach(list => {
                 const option = document.createElement('option');
                 option.value = list.id;
@@ -1197,7 +1241,7 @@
     async function loadClickUpLists() {
         const spaceSelect = document.getElementById('spaceSelect');
         const spaceId = spaceSelect.value;
-        
+
         if (!spaceId) {
             return;
         }
@@ -1208,12 +1252,12 @@
 
         try {
             showStatus('🔄 Loading lists...');
-            
+
             // Build URL based on whether folder is selected
-            const url = folderId 
+            const url = folderId
                 ? `/clickup/lists/${spaceId}/${folderId}`
                 : `/clickup/lists/${spaceId}`;
-            
+
             const response = await fetch(url, {
                 method: 'GET'
             });
@@ -1227,13 +1271,13 @@
             // Populate list dropdown
             const listSelect = document.getElementById('listSelect');
             listSelect.innerHTML = '<option value="">Select a list...</option>';
-            
+
             if (data.lists.length === 0) {
                 listSelect.innerHTML = '<option value="">No lists found in this location</option>';
                 showStatus('⚠️ No lists found. Try selecting a different folder or space.', true);
                 return;
             }
-            
+
             data.lists.forEach(list => {
                 const option = document.createElement('option');
                 option.value = list.id;
@@ -1244,7 +1288,7 @@
             // Show list section and create button
             document.getElementById('listSection').style.display = 'block';
             document.getElementById('createTasksSection').style.display = 'block';
-            
+
             const location = folderId ? 'folder' : 'space';
             showStatus(`✅ ${data.lists.length} lists loaded from ${location}! Select a list and create tasks.`);
 
@@ -1256,42 +1300,43 @@
     async function createClickUpTasks() {
         const listSelect = document.getElementById('listSelect');
         const listId = listSelect.value;
-        
+
         if (!listId) {
             showStatus('❌ Please select a list first', true);
             return;
         }
 
         // Get the project phases from the page data
-        const phases = {{ project.ai_data.clickup_plan.phases | tojson | safe }};
-        
-        if (!phases || phases.length === 0) {
-            showStatus('❌ No tasks found to create', true);
-            return;
+        const phases = {{ project.ai_data.clickup_plan.phases | tojson | safe
+    }};
+
+    if (!phases || phases.length === 0) {
+        showStatus('❌ No tasks found to create', true);
+        return;
+    }
+
+    try {
+        showStatus('🔄 Creating tasks in ClickUp...');
+
+        const response = await fetch('/clickup/create-tasks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                list_id: listId,
+                phases: phases
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+            throw new Error(data.error || 'Failed to create tasks');
         }
 
-        try {
-            showStatus('🔄 Creating tasks in ClickUp...');
-            
-            const response = await fetch('/clickup/create-tasks', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    list_id: listId,
-                    phases: phases
-                })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok || data.error) {
-                throw new Error(data.error || 'Failed to create tasks');
-            }
-
-            // Show success message
-            const successMessage = `
+        // Show success message
+        const successMessage = `
                 ✅ <strong>Tasks created successfully!</strong><br>
                 📊 Created: ${data.created_count} tasks<br>
                 ${data.failed_count > 0 ? `⚠️ Failed: ${data.failed_count} tasks<br>` : ''}
@@ -1299,22 +1344,22 @@
                     Open ClickUp →
                 </a>
             `;
-            showStatus(successMessage);
+        showStatus(successMessage);
 
-        } catch (error) {
-            showStatus('❌ ' + error.message, true);
-        }
+    } catch (error) {
+        showStatus('❌ ' + error.message, true);
+    }
     }
 
     // Auto-load workspaces if token is configured in .env
     async function autoLoadClickUpWorkspaces() {
         try {
             showConfigStatus('🔄', 'Verificando configuración de ClickUp...');
-            
+
             // Check if token is configured in .env
             const checkResponse = await fetch('/clickup/check-config');
             const checkData = await checkResponse.json();
-            
+
             if (checkData.configured) {
                 showConfigStatus('✅', 'Token encontrado en .env - Cargando workspaces...');
                 // Auto-load workspaces
@@ -1334,12 +1379,12 @@
             const projectId = '{{ project.id }}';
             const storageKey = `project_${projectId}_${type}s`;
             console.log(`[DEBUG] Saving ${type} state - ID: ${sectionId}, Expanded: ${isExpanded}`);
-            
+
             if (!sectionId) {
                 console.error(`Error: ${type} ID is undefined or empty`);
                 return false;
             }
-            
+
             // Save to localStorage for immediate UI update
             let states = {};
             try {
@@ -1350,54 +1395,54 @@
                 console.error('Error parsing localStorage:', e);
                 states = {};
             }
-            
+
             console.log(`[DEBUG] Current states before update:`, states);
             states[sectionId] = isExpanded;
             console.log(`[DEBUG] Updated states:`, states);
-            
+
             try {
                 localStorage.setItem(storageKey, JSON.stringify(states));
                 console.log(`[DEBUG] Successfully updated localStorage`);
             } catch (e) {
                 console.error('Error saving to localStorage:', e);
             }
-            
+
             // Save to database for persistence
             try {
                 console.log(`[DEBUG] Making API call to save ${type} state`);
                 const url = `/api/projects/${projectId}/section-states/${type}-${sectionId}`;
                 console.log(`[DEBUG] API URL: ${url}`);
-                
+
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ is_expanded: isExpanded }),
                     credentials: 'same-origin'
                 });
-                
+
                 console.log(`[DEBUG] API Response status:`, response.status);
                 const responseData = await response.json().catch(e => ({}));
                 console.log(`[DEBUG] API Response data:`, responseData);
-                
+
                 if (!response.ok) {
                     console.error(`[ERROR] API Error ${response.status}:`, responseData);
                     return false;
                 }
-                
+
                 console.log(`[DEBUG] Successfully saved ${type} state to server`);
                 return true;
-                
+
             } catch (error) {
                 console.error(`[ERROR] Unexpected error saving ${type} state:`, error);
                 return false;
             }
         },
-        
+
         // Load state from localStorage and database
         async loadState(sectionId, type = 'section') {
             const projectId = '{{ project.id }}';
             const storageKey = `project_${projectId}_${type}s`;
-            
+
             // First check localStorage for immediate response
             let localStates = {};
             try {
@@ -1406,14 +1451,14 @@
                 console.error('Error parsing localStorage:', e);
                 localStates = {};
             }
-            
+
             // If we have a local state, use it but still sync with server in background
             if (localStates[sectionId] !== undefined) {
                 // Fire and forget sync with server
                 this.syncStates(projectId, type);
                 return localStates[sectionId];
             }
-            
+
             // If no local state, try to load from server
             try {
                 const response = await fetch(`/api/projects/${projectId}/section-states`);
@@ -1428,11 +1473,11 @@
                                 ...acc,
                                 [key.substring(typePrefix.length)]: value
                             }), {});
-                        
+
                         // Update localStorage with server states
                         const updatedStates = { ...localStates, ...typeStates };
                         localStorage.setItem(storageKey, JSON.stringify(updatedStates));
-                        
+
                         // Return the state for the requested section if it exists
                         if (typeStates[sectionId] !== undefined) {
                             return typeStates[sectionId];
@@ -1442,11 +1487,11 @@
             } catch (error) {
                 console.error('Error loading section states from server:', error);
             }
-            
+
             // Default to collapsed for sections, expanded for phases if no state is found
             return type === 'phase' ? true : false;
         },
-        
+
         // Sync states from server to localStorage
         async syncStates(projectId, type = 'section') {
             try {
@@ -1456,7 +1501,7 @@
                     if (data.status === 'success') {
                         const storageKey = `project_${projectId}_${type}s`;
                         const typePrefix = `${type}-`;
-                        
+
                         // Filter states for the current type
                         const typeStates = Object.entries(data.section_states || {})
                             .filter(([key]) => key.startsWith(typePrefix))
@@ -1464,7 +1509,7 @@
                                 ...acc,
                                 [key.substring(typePrefix.length)]: value
                             }), {});
-                        
+
                         // Get current local states
                         let localStates = {};
                         try {
@@ -1473,14 +1518,14 @@
                             console.error('Error parsing localStorage during sync:', e);
                             localStates = {};
                         }
-                        
+
                         // Merge server states with local states (local takes precedence)
                         const mergedStates = { ...typeStates, ...localStates };
                         localStorage.setItem(storageKey, JSON.stringify(mergedStates));
-                        
+
                         // Update UI if needed
                         this.updateUI(mergedStates, type);
-                        
+
                         return true;
                     }
                 }
@@ -1490,27 +1535,27 @@
                 return false;
             }
         },
-        
+
         // Update UI based on states
         updateUI(states, type = 'section') {
             Object.entries(states).forEach(([id, isExpanded]) => {
-                const selector = type === 'section' ? 
-                    `[data-section-id="${id}"]` : 
+                const selector = type === 'section' ?
+                    `[data-section-id="${id}"]` :
                     `[data-phase-id="${id}"]`;
-                    
+
                 const section = document.querySelector(selector);
                 if (!section) return;
-                
+
                 const header = section.querySelector(`.${type}-header`);
-                const content = type === 'section' ? 
-                    header?.nextElementSibling : 
+                const content = type === 'section' ?
+                    header?.nextElementSibling :
                     section.querySelector(`.${type}-tasks`);
-                
+
                 if (!header || !content) {
                     console.warn(`Missing header or content for ${type}:`, id);
                     return;
                 }
-                
+
                 if (isExpanded) {
                     content.style.display = 'block';
                     header.classList.add('expanded');
@@ -1531,21 +1576,21 @@
             });
             return true;
         },
-        
+
         // Toggle section/phase visibility
         toggle(header, type = 'section') {
             const section = header.closest(`.${type}-card, .${type}-category`);
-            const content = type === 'section' ? 
-                header.nextElementSibling : 
+            const content = type === 'section' ?
+                header.nextElementSibling :
                 section.querySelector(`.${type}-tasks`);
-                
+
             const toggleIcon = header.querySelector('.toggle-icon');
             const sectionId = header.getAttribute(`data-${type}-id`);
-            
+
             if (!sectionId) return;
-            
+
             const isExpanding = content.style.display !== 'block';
-            
+
             // Toggle UI
             if (isExpanding) {
                 content.style.display = 'block';
@@ -1558,12 +1603,12 @@
                 header.classList.add('collapsed');
                 if (toggleIcon) toggleIcon.style.transform = 'rotate(0)';
             }
-            
+
             // Save the state
             this.saveState(sectionId, isExpanding, type);
         }
     };
-    
+
     // Alias functions for backward compatibility
     async function saveSectionState(sectionId, isExpanded) {
         const projectId = '{{ project.id }}';
@@ -1572,7 +1617,7 @@
             console.error('Error: sectionId is undefined or empty');
             return false;
         }
-        
+
         // Save to localStorage for immediate UI update
         const storageKey = `project_${projectId}_sections`;
         let sectionsState = {};
@@ -1584,25 +1629,25 @@
             console.error('Error parsing localStorage:', e);
             sectionsState = {};
         }
-        
+
         console.log(`[DEBUG] Current sectionsState before update:`, sectionsState);
         sectionsState[sectionId] = isExpanded;
         console.log(`[DEBUG] Updated sectionsState:`, sectionsState);
-        
+
         try {
             localStorage.setItem(storageKey, JSON.stringify(sectionsState));
             console.log(`[DEBUG] Successfully updated localStorage`);
         } catch (e) {
             console.error('Error saving to localStorage:', e);
         }
-        
+
         // Save to database for persistence
         try {
             console.log(`[DEBUG] Making API call to save section state`);
             const url = `/api/projects/${projectId}/section-states/${sectionId}`;
             console.log(`[DEBUG] API URL: ${url}`);
             console.log(`[DEBUG] Request payload:`, { is_expanded: isExpanded });
-            
+
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -1611,40 +1656,40 @@
                 body: JSON.stringify({ is_expanded: isExpanded }),
                 credentials: 'same-origin'  // Ensures cookies are sent with the request
             });
-            
+
             console.log(`[DEBUG] API Response status:`, response.status);
             const responseData = await response.json().catch(e => {
                 console.error('Error parsing JSON response:', e);
                 return { error: 'Invalid JSON response' };
             });
             console.log(`[DEBUG] API Response data:`, responseData);
-            
+
             if (!response.ok) {
                 console.error(`[ERROR] API Error ${response.status}:`, responseData);
                 return false;
             }
-            
+
             console.log(`[DEBUG] Successfully saved section state to server`);
             return true;
-            
+
             console.log(`Response status: ${response.status}`);
-            
+
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Server responded with error:', errorText);
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const result = await response.json();
             console.log('Server response:', result);
-            
+
             if (result.status !== 'success') {
                 throw new Error(result.message || 'Failed to save section state');
             }
-            
+
             console.log('Section state saved successfully');
             return true;
-            
+
         } catch (error) {
             console.error('Error saving section state:', error);
             // Show error to user but continue with localStorage
@@ -1657,7 +1702,7 @@
     async function loadSectionState(sectionId) {
         const projectId = '{{ project.id }}';
         const storageKey = `project_${projectId}_sections`;
-        
+
         // First check localStorage for immediate response
         let localSectionsState = {};
         try {
@@ -1666,14 +1711,14 @@
             console.error('Error parsing localStorage:', e);
             localSectionsState = {};
         }
-        
+
         // If we have a local state, use it but still sync with server in background
         if (localSectionsState[sectionId] !== undefined) {
             // Fire and forget sync with server
             syncSectionStates(projectId);
             return localSectionsState[sectionId];
         }
-        
+
         // If no local state, try to load from server
         try {
             const response = await fetch(`/api/projects/${projectId}/section-states`);
@@ -1683,7 +1728,7 @@
                     // Update localStorage with server states
                     const updatedStates = { ...localSectionsState, ...data.section_states };
                     localStorage.setItem(storageKey, JSON.stringify(updatedStates));
-                    
+
                     // Return the state for the requested section if it exists
                     if (data.section_states[sectionId] !== undefined) {
                         return data.section_states[sectionId];
@@ -1693,11 +1738,11 @@
         } catch (error) {
             console.error('Error loading section states from server:', error);
         }
-        
+
         // Default to collapsed if no state is found
         return false;
     }
-    
+
     // Sync section states from server to localStorage
     async function syncSectionStates(projectId) {
         try {
@@ -1707,21 +1752,21 @@
                 if (data.status === 'success') {
                     const storageKey = `project_${projectId}_sections`;
                     let localSectionsState = {};
-                    
+
                     try {
                         localSectionsState = JSON.parse(localStorage.getItem(storageKey) || '{}');
                     } catch (e) {
                         console.error('Error parsing localStorage during sync:', e);
                         localSectionsState = {};
                     }
-                    
+
                     // Merge server states with local states (local takes precedence)
                     const mergedStates = { ...data.section_states, ...localSectionsState };
                     localStorage.setItem(storageKey, JSON.stringify(mergedStates));
-                    
+
                     // Update UI if needed
                     updateSectionStates(mergedStates);
-                    
+
                     return true;
                 }
             }
@@ -1731,7 +1776,7 @@
             return false;
         }
     }
-    
+
     // Update section states in the UI
     async function updateSectionStates(states) {
         Object.entries(states).forEach(([sectionId, isExpanded]) => {
@@ -1739,7 +1784,7 @@
             if (section) {
                 const header = section.querySelector('.category-header');
                 const content = header ? header.nextElementSibling : null;
-                
+
                 if (!header || !content) {
                     console.warn('Missing header or content for section:', sectionId, { header, content });
                     return;
@@ -1771,7 +1816,7 @@
     async function loadSectionState(sectionId) {
         const projectId = '{{ project.id }}';
         const storageKey = `project_${projectId}_sections`;
-        
+
         // First check localStorage for immediate response
         let localSectionsState = {};
         try {
@@ -1780,14 +1825,14 @@
             console.error('Error parsing localStorage:', e);
             localSectionsState = {};
         }
-        
+
         // If we have a local state, use it but still sync with server in background
         if (localSectionsState[sectionId] !== undefined) {
             // Fire and forget sync with server
             syncSectionStates(projectId);
             return localSectionsState[sectionId];
         }
-        
+
         // If no local state, try to load from server
         try {
             const response = await fetch(`/api/projects/${projectId}/section-states`);
@@ -1797,7 +1842,7 @@
                     // Update localStorage with server states
                     const updatedStates = { ...localSectionsState, ...data.section_states };
                     localStorage.setItem(storageKey, JSON.stringify(updatedStates));
-                    
+
                     // Return the state for the requested section if it exists
                     if (data.section_states[sectionId] !== undefined) {
                         return data.section_states[sectionId];
@@ -1807,11 +1852,11 @@
         } catch (error) {
             console.error('Error loading section states from server:', error);
         }
-        
+
         // Default to collapsed if no state is found
         return false;
     }
-    
+
     // Sync section states from server to localStorage
     async function syncSectionStates(projectId) {
         try {
@@ -1821,21 +1866,21 @@
                 if (data.status === 'success') {
                     const storageKey = `project_${projectId}_sections`;
                     let localSectionsState = {};
-                    
+
                     try {
                         localSectionsState = JSON.parse(localStorage.getItem(storageKey) || '{}');
                     } catch (e) {
                         console.error('Error parsing localStorage during sync:', e);
                         localSectionsState = {};
                     }
-                    
+
                     // Merge server states with local states (local takes precedence)
                     const mergedStates = { ...data.section_states, ...localSectionsState };
                     localStorage.setItem(storageKey, JSON.stringify(mergedStates));
-                    
+
                     // Update UI if needed
                     updateSectionStates(mergedStates);
-                    
+
                     return true;
                 }
             }
@@ -1845,12 +1890,12 @@
             return false;
         }
     }
-    
+
     // Function to save phase state
     async function savePhaseState(phaseId, isExpanded) {
         const projectId = '{{ project.id }}';
         const storageKey = `project_${projectId}_phases`;
-        
+
         // Save to localStorage for immediate UI update
         let phasesState = {};
         try {
@@ -1860,10 +1905,10 @@
             console.error('Error parsing localStorage:', e);
             phasesState = {};
         }
-        
+
         phasesState[phaseId] = isExpanded;
         localStorage.setItem(storageKey, JSON.stringify(phasesState));
-        
+
         // Save to database for persistence
         try {
             const url = `/api/projects/${projectId}/section-states/phase-${phaseId}`;
@@ -1877,12 +1922,12 @@
             console.error('Error saving phase state:', error);
         }
     }
-    
+
     // Function to load phase state
     async function loadPhaseState(phaseId) {
         const projectId = '{{ project.id }}';
         const storageKey = `project_${projectId}_phases`;
-        
+
         // First check localStorage
         try {
             const storedData = localStorage.getItem(storageKey);
@@ -1895,20 +1940,20 @@
         } catch (e) {
             console.error('Error parsing localStorage:', e);
         }
-        
+
         // Default to expanded if no state is found
         return true;
     }
-    
+
     // Toggle phase visibility
     function togglePhase(header) {
         const phaseCard = header.closest('.phase-card');
         const content = header.nextElementSibling;
         const toggleIcon = header.querySelector('.toggle-icon');
         const phaseId = header.getAttribute('data-phase-id');
-        
+
         const isExpanding = content.style.display !== 'block';
-        
+
         // Toggle UI
         if (isExpanding) {
             content.style.display = 'block';
@@ -1925,36 +1970,36 @@
                 toggleIcon.style.transform = 'rotate(0)';
             }
         }
-        
+
         // Save the state
         if (phaseId) {
             savePhaseState(phaseId, isExpanding);
         }
     }
-    
+
     // Initialize everything when the page loads
-    document.addEventListener('DOMContentLoaded', async function() {
+    document.addEventListener('DOMContentLoaded', async function () {
         console.log('DOM fully loaded, initializing...');
-        
+
         // Initialize ClickUp integration if needed
         autoLoadClickUpWorkspaces();
-        
+
         // Set up category toggles for technical questions
         document.querySelectorAll('.category-header').forEach(header => {
             header.style.cursor = 'pointer';
-            
+
             // Initialize the state
             const section = header.closest('.question-category');
             if (!section) return;
-            
-            const sectionId = section.getAttribute('data-section-id') || 
-                             `category-${header.textContent.trim().toLowerCase().replace(/\s+/g, '-')}`;
+
+            const sectionId = section.getAttribute('data-section-id') ||
+                `category-${header.textContent.trim().toLowerCase().replace(/\s+/g, '-')}`;
             section.setAttribute('data-section-id', sectionId);
-            
+
             // Get content and toggle icon
             const content = header.nextElementSibling;
             const toggleIcon = header.querySelector('.toggle-icon');
-            
+
             // Load initial state
             loadSectionState(sectionId).then(isExpanded => {
                 if (isExpanded) {
@@ -1973,15 +2018,15 @@
                     }
                 }
             });
-            
+
             // Add click event listener
-            header.addEventListener('click', function(e) {
+            header.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 const isCurrentlyExpanded = content.style.display !== 'none';
                 const newState = !isCurrentlyExpanded;
-                
+
                 // Toggle UI
                 if (newState) {
                     content.style.display = 'block';
@@ -1998,23 +2043,23 @@
                         toggleIcon.style.transform = 'rotate(0)';
                     }
                 }
-                
+
                 // Save the state
                 saveSectionState(sectionId, newState);
             });
         });
-        
+
         // Set up phase toggles for ClickUp task plan
         document.querySelectorAll('.phase-header').forEach(header => {
             header.style.cursor = 'pointer';
-            
+
             // Get content and toggle icon
             const content = header.nextElementSibling;
             const toggleIcon = header.querySelector('.toggle-icon');
             const phaseId = header.getAttribute('data-phase-id');
-            
+
             if (!phaseId) return;
-            
+
             // Load initial state
             loadPhaseState(phaseId).then(isExpanded => {
                 if (isExpanded) {
@@ -2033,15 +2078,15 @@
                     }
                 }
             });
-            
+
             // Add click event listener
-            header.addEventListener('click', function(e) {
+            header.addEventListener('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 togglePhase(header);
             });
         });
-        
+
         // Sync section states with server
         const projectId = '{{ project.id }}';
         syncSectionStates(projectId);

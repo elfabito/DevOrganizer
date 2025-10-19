@@ -48,3 +48,7 @@ Thumbs.db
 # Database
 projects.db
 projects.db-journal
+database_backups/
+
+# Flask sessions
+.flask_session/

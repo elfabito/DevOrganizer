@@ -46,7 +46,29 @@ def get_db_connection() -> sqlite3.Connection:
         current_app.logger.error(f"Failed to connect to database: {str(e)}", exc_info=True)
         raise
 
-
+def normalize_for_sqlite(val):
+    """Normalize values to types sqlite3 accepts."""
+    if val is None:
+        return None
+    # sqlite accepts str, int, float, bytes; bool is subclass of int
+    if isinstance(val, (str, int, float, bytes, bool)):
+        return val
+    # Convert Decimal, UUID, datetime, etc.
+    try:
+        from decimal import Decimal
+        import uuid as _uuid
+        if isinstance(val, Decimal):
+            return float(val)
+        if isinstance(val, _uuid.UUID):
+            return str(val)
+    except Exception:
+        pass
+    if isinstance(val, datetime):
+        return val.isoformat()
+    if isinstance(val, (list, dict, tuple, set)):
+        return json.dumps(val, default=str)
+    # Fallback: stringify
+    return str(val)
 class ProjectStorageSQLite:
     """Manages project data persistence using SQLite database"""
     
@@ -75,6 +97,7 @@ class ProjectStorageSQLite:
                 name TEXT NOT NULL,
                 password_hash TEXT NOT NULL,
                 created_at TEXT NOT NULL,
+                       updated_at TEXT NOT NULL,
                 last_login TEXT,
                 is_active BOOLEAN DEFAULT 1
             )
@@ -124,9 +147,12 @@ class ProjectStorageSQLite:
                 id TEXT PRIMARY KEY,
                 project_id TEXT NOT NULL,
                 section_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
                 is_expanded BOOLEAN NOT NULL,
                 updated_at TEXT NOT NULL,
-                UNIQUE(project_id, section_id)
+                UNIQUE(project_id, section_id, user_id),
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         ''')
         
@@ -198,10 +224,15 @@ class ProjectStorageSQLite:
             ON estimations(created_at DESC)
         ''')
         
-        # Add index for section_states queries
+        # Add indexes for section_states queries
         cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_section_states_project 
+            CREATE INDEX IF NOT EXISTS idx_section_states_project
             ON section_states(project_id)
+        ''')
+
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_section_states_user
+            ON section_states(user_id)
         ''')
         
         cursor.execute('''
@@ -395,68 +426,88 @@ class ProjectStorageSQLite:
     
     def save_estimation(self, estimation_data: Dict) -> Dict:
         """
-        Save an estimation to the database
-        
+        Save an estimation to the database (SQLite)
+
         Args:
-            estimation_data: Dictionary containing estimation data
+            estimation_data (dict): Dictionary containing estimation data.
                 Required keys: project_name, project_description, phases, total_hours, user_id
                 Optional keys: id (auto-generated if not provided), created_at (defaults to now)
-                
+
         Returns:
-            The ID of the saved estimation
-            
+            dict: The saved estimation data (as stored in the database)
+
         Raises:
-            ValueError: If required fields are missing or saving fails
+            ValueError: If required fields are missing or saving fails.
         """
-        estimation_id = estimation_data.get('id') or str(uuid.uuid4())
-        created_at = estimation_data.get('created_at') or datetime.utcnow().isoformat()
-        user_id = estimation_data.get('user_id')
-        
-        if not user_id:
-            raise ValueError("user_id is required")
-            
-        # Convert phases to JSON string
-        phases = estimation_data.get('phases', [])
-        if isinstance(phases, list):
-            phases = json.dumps(phases)
-            
         conn = self._get_connection()
         cursor = conn.cursor()
-        
+        # ✅ Prepare estimation data
+        phases_value = estimation_data['phases']
+        if not isinstance(phases_value, str):
+            phases_value = json.dumps(phases_value)
         try:
-            cursor.execute('''
-                INSERT OR REPLACE INTO estimations 
-                (id, project_name, project_description, phases, total_hours, created_at, user_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                estimation_id,
-                estimation_data['project_name'],
-                estimation_data['project_description'],
-                phases,
-                estimation_data['total_hours'],
-                created_at,
-                user_id
-            ))
-            
-            conn.commit()
-            
-            # Return the complete saved estimation data
-            return {
+            # ✅ Validate required fields
+            required_fields = ['project_name', 'project_description', 'phases', 'total_hours', 'user_id']
+            missing_fields = [f for f in required_fields if f not in estimation_data]
+            if missing_fields:
+                raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
+
+            # ✅ Generate ID and timestamps if not provided
+            estimation_id = estimation_data.get('id') or str(uuid.uuid4())
+            created_at = estimation_data.get('created_at') or datetime.utcnow().isoformat()
+
+            # ✅ Prepare estimation data
+            estimation = {
                 'id': estimation_id,
                 'project_name': estimation_data['project_name'],
                 'project_description': estimation_data['project_description'],
-                'phases': json.loads(phases) if isinstance(phases, str) else phases,
-                'total_hours': estimation_data['total_hours'],
+                'phases':  phases_value,  # Puede ser JSON string
+                'total_hours': int(estimation_data['total_hours']),
                 'created_at': created_at,
-                'user_id': user_id
+                'user_id': estimation_data['user_id']
             }
-            
-        except sqlite3.IntegrityError as e:
+
+            # ✅ Check if estimation already exists (update if yes, insert if not)
+            cursor.execute("SELECT id FROM estimations WHERE id = ?", (estimation_id,))
+            existing = cursor.fetchone()
+
+            if existing:
+                cursor.execute('''
+                    UPDATE estimations
+                    SET project_name = ?, project_description = ?, phases = ?, 
+                        total_hours = ?, created_at = ?, user_id = ?
+                    WHERE id = ?
+                ''', (
+                    estimation['project_name'],
+                    estimation['project_description'],
+                    phases_value,
+                    estimation['total_hours'],
+                    estimation['created_at'],
+                    estimation['user_id'],
+                    estimation['id'],
+                ))
+            else:
+                cursor.execute('''
+                    INSERT INTO estimations (id, project_name, project_description, phases, 
+                                            total_hours, created_at, user_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    estimation['id'],
+                    estimation['project_name'],
+                    estimation['project_description'],
+                    phases_value,
+                    estimation['total_hours'],
+                    estimation['created_at'],
+                    estimation['user_id']
+                ))
+
+            conn.commit()
+            return estimation
+
+        except Exception as e:
             conn.rollback()
-            if 'FOREIGN KEY constraint failed' in str(e):
-                raise ValueError(f"Invalid user_id: {user_id}")
             raise ValueError(f"Failed to save estimation: {str(e)}")
-            
+
         finally:
             conn.close()
     
@@ -552,6 +603,55 @@ class ProjectStorageSQLite:
             
         return estimation
     
+            
+    def update_estimation(self, estimation_id: str, updated_data: Dict, user_id: Optional[str] = None) -> bool:
+        """
+        Update an existing estimation in the database.
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            # Optional: verify that the estimation belongs to this user
+            if user_id is not None:
+                cursor.execute('SELECT id FROM estimations WHERE id = ? AND user_id = ?', 
+                            (estimation_id, user_id))
+                if not cursor.fetchone():
+                    raise ValueError("Estimation not found or does not belong to this user")
+
+            # Normalize updated_data values for sqlite
+            keys = list(updated_data.keys())
+            if not keys:
+                return False
+
+            normalized_values = []
+            for k in keys:
+                v = updated_data[k]
+                # Ensure phases is stored as JSON text
+                if k == 'phases' and not isinstance(v, str):
+                    v = json.dumps(v)
+                normalized_values.append(normalize_for_sqlite(v))
+
+            # Append estimation_id as last parameter
+            normalized_values.append(estimation_id)
+
+            # Build dynamic SET clause safely
+            set_clause = ", ".join([f"{key} = ?" for key in keys])
+            cursor.execute(f"UPDATE estimations SET {set_clause} WHERE id = ?", tuple(normalized_values))
+
+            if cursor.rowcount == 0:
+                raise ValueError(f"Estimation with ID {estimation_id} not found")
+
+            conn.commit()
+            return True
+
+        except sqlite3.Error as e:
+            conn.rollback()
+            raise ValueError(f"Failed to update estimation: {str(e)}")
+
+        finally:
+            conn.close()
+    
     def delete_estimation(self, estimation_id: str, user_id: Optional[str] = None) -> bool:
         """
         Delete an estimation by ID, optionally checking user ownership
@@ -589,70 +689,253 @@ class ProjectStorageSQLite:
         finally:
             conn.close()
             
-    def save_section_state(self, project_id: str, section_id: str, is_expanded: bool) -> bool:
+    def save_section_state(self, project_id: str, section_id: str, is_expanded: bool, user_id: str) -> bool:
         """
         Save the state of a collapsible section for a project
-        
+
         Args:
             project_id: ID of the project
             section_id: ID of the section
             is_expanded: Whether the section is expanded
-            
+            user_id: ID of the user
+
         Returns:
             bool: True if save was successful
         """
+        conn = None
         try:
             conn = sqlite3.connect(self.db_file)
+            conn.execute('PRAGMA foreign_keys = ON')
             cursor = conn.cursor()
-            
+
+            # Log the operation
+            import logging
+            logging.basicConfig(level=logging.DEBUG)
+            logger = logging.getLogger(__name__)
+            logger.debug(f"[SAVE_SECTION_STATE] Saving state - project_id: {project_id}, section_id: {section_id}, user_id: {user_id}, is_expanded: {is_expanded}")
+
             cursor.execute('''
-                INSERT INTO section_states (id, project_id, section_id, is_expanded, updated_at)
-                VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT(project_id, section_id) 
-                DO UPDATE SET 
+                INSERT INTO section_states (id, project_id, section_id, user_id, is_expanded, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(project_id, section_id, user_id)
+                DO UPDATE SET
                     is_expanded = excluded.is_expanded,
                     updated_at = excluded.updated_at
             ''', (
                 str(uuid.uuid4()),
                 project_id,
                 section_id,
-                is_expanded,
+                user_id,
+                1 if is_expanded else 0,  # Ensure boolean is stored as 0 or 1
                 datetime.now().isoformat()
             ))
-            
+
             conn.commit()
+            logger.debug(f"[SAVE_SECTION_STATE] Successfully saved section state")
             return True
-            
+
         except sqlite3.Error as e:
-            print(f"Error saving section state: {e}")
+            if conn:
+                conn.rollback()
+            import logging
+            logging.basicConfig(level=logging.ERROR)
+            logger = logging.getLogger(__name__)
+            logger.error(f"[SAVE_SECTION_STATE] Database error saving section state: {e}", exc_info=True)
             return False
-            
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            import logging
+            logging.basicConfig(level=logging.ERROR)
+            logger = logging.getLogger(__name__)
+            logger.error(f"[SAVE_SECTION_STATE] Unexpected error saving section state: {e}", exc_info=True)
+            return False
         finally:
-            if 'conn' in locals():
+            if conn:
                 conn.close()
     
-    def get_section_states(self, project_id: str) -> Dict[str, bool]:
+    def get_section_states(self, project_id: str, user_id: str) -> Dict[str, bool]:
         """
-        Get all section states for a project
-        
+        Get all section states for a project for a specific user
+
         Args:
             project_id: ID of the project
-            
+            user_id: ID of the user
+
         Returns:
             Dict[str, bool]: Dictionary mapping section IDs to their expanded state
         """
+        conn = None
         try:
             conn = sqlite3.connect(self.db_file)
+            conn.execute('PRAGMA foreign_keys = ON')
             cursor = conn.cursor()
-            
+
+            # Log the operation
+            import logging
+            logging.basicConfig(level=logging.DEBUG)
+            logger = logging.getLogger(__name__)
+            logger.debug(f"[GET_SECTION_STATES] Loading states - project_id: {project_id}, user_id: {user_id}")
+
             cursor.execute(
-                "SELECT section_id, is_expanded FROM section_states WHERE project_id = ?", 
-                (project_id,)
+                "SELECT section_id, is_expanded FROM section_states WHERE project_id = ? AND user_id = ?",
+                (project_id, user_id)
             )
-            
-            return {row[0]: bool(row[1]) for row in cursor.fetchall()}
+
+            results = {row[0]: bool(row[1]) for row in cursor.fetchall()}
+            logger.debug(f"[GET_SECTION_STATES] Retrieved {len(results)} section states: {results}")
+            return results
+
         except sqlite3.Error as e:
-            print(f"Error loading section states: {e}")
+            import logging
+            logging.basicConfig(level=logging.ERROR)
+            logger = logging.getLogger(__name__)
+            logger.error(f"[GET_SECTION_STATES] Database error loading section states: {e}", exc_info=True)
+            return {}
+        except Exception as e:
+            import logging
+            logging.basicConfig(level=logging.ERROR)
+            logger = logging.getLogger(__name__)
+            logger.error(f"[GET_SECTION_STATES] Unexpected error loading section states: {e}", exc_info=True)
             return {}
         finally:
-            conn.close()
+            if conn:
+                conn.close()
+
+    def save_feature_suggestions(self, project_id: str, project_name: str, audit_text: str, suggestions) -> Dict:
+        """
+        Save feature suggestions to the database
+
+        Args:
+            project_id: ID of the project
+            project_name: Name of the project
+            audit_text: The audit text provided by the user
+            suggestions: AI-generated suggestions (string, dict, or list - will be converted to string)
+
+        Returns:
+            Dict: The saved feature suggestion data including ID
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_file)
+            conn.execute('PRAGMA foreign_keys = ON')
+            cursor = conn.cursor()
+
+            # Create new feature suggestion
+            suggestion_id = str(uuid.uuid4())
+            created_at = datetime.now().isoformat()
+
+            # Convert suggestions to string if it's a dict or list
+            if isinstance(suggestions, (dict, list)):
+                suggestions_str = json.dumps(suggestions)
+            else:
+                suggestions_str = str(suggestions)
+
+            cursor.execute('''
+                INSERT INTO feature_suggestions (id, project_id, project_name, audit_text, suggestions, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (
+                suggestion_id,
+                project_id,
+                project_name,
+                audit_text,
+                suggestions_str,
+                created_at
+            ))
+
+            conn.commit()
+
+            return {
+                'id': suggestion_id,
+                'project_id': project_id,
+                'project_name': project_name,
+                'audit_text': audit_text,
+                'suggestions': suggestions,  # Return original format
+                'created_at': created_at
+            }
+
+        except sqlite3.Error as e:
+            if conn:
+                conn.rollback()
+            import logging
+            logging.basicConfig(level=logging.ERROR)
+            logger = logging.getLogger(__name__)
+            logger.error(f"Database error saving feature suggestions: {e}", exc_info=True)
+            raise ValueError(f"Failed to save feature suggestions: {str(e)}")
+        finally:
+            if conn:
+                conn.close()
+
+    def get_feature_suggestions_by_project(self, project_id: str) -> List[Dict]:
+        """
+        Get all feature suggestions for a specific project
+
+        Args:
+            project_id: ID of the project
+
+        Returns:
+            List[Dict]: List of feature suggestion dictionaries
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_file)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                SELECT id, project_id, project_name, audit_text, suggestions, created_at
+                FROM feature_suggestions
+                WHERE project_id = ?
+                ORDER BY created_at DESC
+            ''', (project_id,))
+
+            suggestions = []
+            for row in cursor.fetchall():
+                suggestions.append(dict(row))
+
+            return suggestions
+
+        except sqlite3.Error as e:
+            import logging
+            logging.basicConfig(level=logging.ERROR)
+            logger = logging.getLogger(__name__)
+            logger.error(f"Database error loading feature suggestions: {e}", exc_info=True)
+            return []
+        finally:
+            if conn:
+                conn.close()
+
+    def get_feature_suggestion_by_id(self, suggestion_id: str) -> Optional[Dict]:
+        """
+        Get a specific feature suggestion by ID
+
+        Args:
+            suggestion_id: ID of the feature suggestion
+
+        Returns:
+            Optional[Dict]: Feature suggestion data or None if not found
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_file)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                SELECT id, project_id, project_name, audit_text, suggestions, created_at
+                FROM feature_suggestions
+                WHERE id = ?
+            ''', (suggestion_id,))
+
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+        except sqlite3.Error as e:
+            import logging
+            logging.basicConfig(level=logging.ERROR)
+            logger = logging.getLogger(__name__)
+            logger.error(f"Database error loading feature suggestion: {e}", exc_info=True)
+            return None
+        finally:
+            if conn:
+                conn.close()

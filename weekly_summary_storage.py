@@ -92,7 +92,7 @@ class WeeklySummaryStorage:
                 "Thursday": "",
                 "Friday": ""
             },
-            "ai_summary": None
+            "ai_summary": None,
         }
         
         # Insert into database

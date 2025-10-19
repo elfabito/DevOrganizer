@@ -91,6 +91,7 @@ def migrate_database(db_path='projects.db'):
                 phases TEXT NOT NULL,
                 total_hours INTEGER NOT NULL,
                 created_at TEXT NOT NULL,
+                
                 user_id TEXT,
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
@@ -120,7 +121,7 @@ def migrate_database(db_path='projects.db'):
         
         # Create new projects table with user_id
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS new_projects (
+            CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 created_at TEXT NOT NULL,
@@ -131,27 +132,6 @@ def migrate_database(db_path='projects.db'):
             )
         ''')
         
-        # Copy data from old projects table if it exists
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'")
-        if cursor.fetchone():
-            # Check if old projects table has data
-            cursor.execute("SELECT COUNT(*) FROM projects")
-            count = cursor.fetchone()[0]
-            
-            if count > 0:
-                print(f"Migrating {count} projects to new schema...")
-                # Copy data to new table (assigning all to a default user)
-                cursor.execute('''
-                    INSERT INTO new_projects (id, name, created_at, brief, ai_data, user_id)
-                    SELECT id, name, created_at, brief, ai_data, NULL FROM projects
-                ''')
-                print("Migration completed successfully.")
-            
-            # Drop old table
-            cursor.execute("DROP TABLE projects")
-        
-        # Rename new_projects to projects
-        cursor.execute("ALTER TABLE new_projects RENAME TO projects")
         
         # Create indexes
         cursor.execute('''
@@ -167,24 +147,32 @@ def migrate_database(db_path='projects.db'):
         # Create section_states table if it doesn't exist
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS section_states (
-                id TEXT PRIMARY KEY,
-                project_id TEXT NOT NULL,
-                section_id TEXT NOT NULL,
-                is_expanded BOOLEAN DEFAULT 0,
-                updated_at TEXT NOT NULL,
-                UNIQUE(project_id, section_id),
-                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    section_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    is_expanded BOOLEAN DEFAULT 0,
+                    updated_at TEXT NOT NULL,
+                    UNIQUE(project_id, section_id, user_id),
+                    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         ''')
+
         
-        # Create index for faster lookups
+        # Create indexes for faster lookups
         cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_section_states_project 
+            CREATE INDEX IF NOT EXISTS idx_section_states_project
             ON section_states(project_id)
         ''')
-        
+
         cursor.execute('''
-            CREATE INDEX IF NOT EXISTS idx_section_states_updated 
+            CREATE INDEX IF NOT EXISTS idx_section_states_user
+            ON section_states(user_id)
+        ''')
+
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_section_states_updated
             ON section_states(updated_at DESC)
         ''')
         

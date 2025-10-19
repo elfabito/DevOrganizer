@@ -40,7 +40,7 @@
 
     .day-note:hover {
         border-color: var(--primary);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
     .day-note h3 {
@@ -136,8 +136,13 @@
     }
 
     @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
     }
 </style>
 {% endblock %}
@@ -154,7 +159,8 @@
     <button class="btn btn-primary" onclick="saveNotes()">💾 Save Notes</button>
     <button class="btn btn-success" onclick="generateSummary()">🤖 Generate AI Summary</button>
     {% if project_id %}
-    <button class="btn btn-secondary" onclick="window.location.href='{{ url_for('view_project', project_id=project_id) }}'">← Back to Project</button>
+    <button class="btn btn-secondary"
+        onclick="window.location.href='{{ url_for('view_project', project_id=project_id) }}'">← Back to Project</button>
     {% else %}
     <button class="btn btn-secondary" onclick="window.location.href='{{ url_for('index') }}'">← Back to Home</button>
     {% endif %}
@@ -164,27 +170,35 @@
 <div class="week-notes-container">
     <div class="day-note">
         <h3><span class="day-icons">📅</span> Monday</h3>
-        <textarea id="monday" placeholder="What did you work on Monday? Add tasks, progress, blockers, decisions...">{{ summary.week_notes.Monday }}</textarea>
+        <textarea id="monday" placeholder="What did you work on Monday? Add tasks, progress, blockers, decisions...">{{
+            summary.week_notes.Monday }}</textarea>
     </div>
 
     <div class="day-note">
         <h3><span class="day-icons">📅</span> Tuesday</h3>
-        <textarea id="tuesday" placeholder="What did you work on Tuesday? Add tasks, progress, blockers, decisions...">{{ summary.week_notes.Tuesday }}</textarea>
+        <textarea id="tuesday"
+            placeholder="What did you work on Tuesday? Add tasks, progress, blockers, decisions...">{{
+            summary.week_notes.Tuesday }}</textarea>
     </div>
 
     <div class="day-note">
         <h3><span class="day-icons">📅</span> Wednesday</h3>
-        <textarea id="wednesday" placeholder="What did you work on Wednesday? Add tasks, progress, blockers, decisions...">{{ summary.week_notes.Wednesday }}</textarea>
+        <textarea id="wednesday"
+            placeholder="What did you work on Wednesday? Add tasks, progress, blockers, decisions...">{{
+            summary.week_notes.Wednesday }}</textarea>
     </div>
 
     <div class="day-note">
         <h3><span class="day-icons">📅</span> Thursday</h3>
-        <textarea id="thursday" placeholder="What did you work on Thursday? Add tasks, progress, blockers, decisions...">{{ summary.week_notes.Thursday }}</textarea>
+        <textarea id="thursday"
+            placeholder="What did you work on Thursday? Add tasks, progress, blockers, decisions...">{{
+            summary.week_notes.Thursday }}</textarea>
     </div>
 
     <div class="day-note">
         <h3><span class="day-icons">📅</span> Friday</h3>
-        <textarea id="friday" placeholder="What did you work on Friday? Add tasks, progress, blockers, decisions...">{{ summary.week_notes.Friday }}</textarea>
+        <textarea id="friday" placeholder="What did you work on Friday? Add tasks, progress, blockers, decisions...">{{
+            summary.week_notes.Friday }}</textarea>
     </div>
 </div>
 
@@ -197,9 +211,10 @@
     <h3>🤖 AI-Generated Weekly Summary</h3>
     <div class="ai-summary-content" id="aiSummaryContent">
         {% if summary.ai_summary %}
-            {{ summary.ai_summary }}
+        {{ summary.ai_summary }}
         {% else %}
-            <div class="empty-summary">No summary generated yet. Fill in your daily notes and click "Generate AI Summary".</div>
+        <div class="empty-summary">No summary generated yet. Fill in your daily notes and click "Generate AI Summary".
+        </div>
         {% endif %}
     </div>
 </div>
@@ -211,7 +226,7 @@
     function showAlert(message, type = 'info') {
         const alertContainer = document.getElementById('alertContainer');
         const alertClass = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : 'alert-info';
-        
+
         alertContainer.innerHTML = `
             <div class="alert ${alertClass} show">
                 ${message}
@@ -320,7 +335,7 @@
             }
 
             showAlert('Weekly summary deleted successfully! Redirecting...', 'success');
-            
+
             setTimeout(() => {
                 {% if project_id %}
                 window.location.href = '{{ url_for('view_project', project_id=project_id) }}';
