@@ -256,7 +256,21 @@ def create_project_form():
     """
     Display the create project form
     """
-    return render_template('create.html')
+    # Get current user from session
+    user = session.get('user')
+    user_id = session.get('user_id')
+
+    # If user data not in session, try to get from database
+    if not user and user_id:
+        try:
+            user = user_storage.get_user_by_id(str(user_id))
+            if user:
+                session['user'] = user
+                session.modified = True
+        except Exception as e:
+            current_app.logger.error(f"Error fetching user in create_project_form: {str(e)}")
+
+    return render_template('create.html', current_user=user)
 
 
 @app.route('/create-estimation', methods=['GET'])
@@ -265,7 +279,21 @@ def create_estimation_form():
     """
     Display the create estimation form
     """
-    return render_template('estimation_create.html')
+    # Get current user from session
+    user = session.get('user')
+    user_id = session.get('user_id')
+
+    # If user data not in session, try to get from database
+    if not user and user_id:
+        try:
+            user = user_storage.get_user_by_id(str(user_id))
+            if user:
+                session['user'] = user
+                session.modified = True
+        except Exception as e:
+            current_app.logger.error(f"Error fetching user in create_estimation_form: {str(e)}")
+
+    return render_template('estimation_create.html', current_user=user)
 
 
 @app.route('/web_login', methods=['GET', 'POST'])
@@ -693,56 +721,108 @@ def save_project():
     """
     Save a project with its AI-generated data
     """
-    user_id = get_current_user_id()
     try:
+        # Get user_id with better error handling
+        user_id = get_current_user_id()
+
+        # Verify we have a valid user_id
+        if not user_id:
+            current_app.logger.error("[SAVE_PROJECT] No user_id found in session")
+            current_app.logger.debug(f"[SAVE_PROJECT] Session data: {dict(session)}")
+            return jsonify({
+                'error': 'User session not found. Please log in again.',
+                'details': 'No user_id in session'
+            }), 401
+
         current_app.logger.debug(f"[SAVE_PROJECT] Starting save_project for user_id: {user_id}")
+
+        # Get and validate request data
         data = request.get_json()
+        if not data:
+            current_app.logger.error("[SAVE_PROJECT] No JSON data received")
+            return jsonify({
+                'error': 'No data provided in request'
+            }), 400
+
         project_name = data.get('name', '').strip()
         project_brief = data.get('brief', '').strip()
         ai_data = data.get('ai_data', {})
-        
+
         current_app.logger.debug(f"[SAVE_PROJECT] Received data - name: {project_name}, brief: {project_brief}, ai_data keys: {list(ai_data.keys()) if isinstance(ai_data, dict) else 'not a dict'}")
-        
+
         # Validate input
         if not project_name or not project_brief:
             return jsonify({
                 'error': 'Project name and description are required'
             }), 400
-        
+
         if not ai_data:
             return jsonify({
                 'error': 'AI data is required. Please generate a plan first.'
             }), 400
-        
+
+        # Verify user exists in database
+        try:
+            user = user_storage.get_user_by_id(str(user_id))
+            if not user:
+                current_app.logger.error(f"[SAVE_PROJECT] User {user_id} not found in database")
+                return jsonify({
+                    'error': 'User account not found. Please log in again.',
+                    'details': 'User not found in database'
+                }), 401
+        except Exception as e:
+            current_app.logger.error(f"[SAVE_PROJECT] Error verifying user: {str(e)}", exc_info=True)
+            return jsonify({
+                'error': 'Error verifying user account',
+                'details': str(e)
+            }), 500
+
         # Prepare project data with user_id
         project_data = {
             'name': project_name,
             'brief': project_brief,
             'ai_data': ai_data,
-            'user_id': user_id
+            'user_id': str(user_id)  # Ensure it's a string
         }
-        
+
         # Save project
+        current_app.logger.debug(f"[SAVE_PROJECT] Attempting to save project for user {user_id}")
         saved_project = storage.save_project(project_data)
-        
+
+        if not saved_project or 'id' not in saved_project:
+            current_app.logger.error(f"[SAVE_PROJECT] Failed to save project - invalid response from storage")
+            return jsonify({
+                'error': 'Failed to save project to database',
+                'details': 'Invalid response from storage layer'
+            }), 500
+
+        current_app.logger.info(f"[SAVE_PROJECT] Successfully saved project {saved_project['id']} for user {user_id}")
+
         return jsonify({
             'success': True,
             'project_id': saved_project['id'],
             'message': 'Project saved successfully!'
         })
-        
+
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
-        current_app.logger.error(f'Error saving project: {str(e)}\n{error_trace}')
-        
+        current_app.logger.error(f'[SAVE_PROJECT] Unexpected error: {str(e)}\n{error_trace}')
+
         # Check if it's a database error
         if 'no such table' in str(e).lower():
             return jsonify({
                 'error': 'Database error: Required tables not found. Please run database migrations.',
                 'details': str(e)
             }), 500
-            
+
+        # Check if it's a Redis connection error
+        if 'redis' in str(e).lower() or 'connection' in str(e).lower():
+            return jsonify({
+                'error': 'Database connection error. Please try again.',
+                'details': 'Failed to connect to database'
+            }), 500
+
         return jsonify({
             'error': f'Failed to save project: {str(e)}',
             'type': type(e).__name__
