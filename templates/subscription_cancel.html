@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Subscription Canceled - Dev Project Organizer{% endblock %}
+
+{% block header_title %}Subscription Canceled{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .cancel-container {
+        max-width: 600px;
+        margin: 60px auto;
+        text-align: center;
+    }
+
+    .cancel-icon {
+        font-size: 80px;
+        margin-bottom: 24px;
+        opacity: 0.7;
+    }
+
+    .cancel-title {
+        font-size: 32px;
+        color: var(--dark);
+        margin-bottom: 16px;
+    }
+
+    .cancel-message {
+        font-size: 18px;
+        color: var(--gray);
+        margin-bottom: 32px;
+        line-height: 1.6;
+    }
+
+    .info-box {
+        background: var(--light-gray);
+        padding: 24px;
+        border-radius: 12px;
+        margin-bottom: 32px;
+        text-align: left;
+    }
+
+    .info-box h3 {
+        font-size: 18px;
+        color: var(--dark);
+        margin-bottom: 12px;
+    }
+
+    .info-box p {
+        color: var(--gray);
+        font-size: 15px;
+        line-height: 1.6;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .features-reminder {
+        background: #dbeafe;
+        border-left: 4px solid var(--primary);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 32px;
+        text-align: left;
+    }
+
+    .features-reminder h4 {
+        color: var(--primary);
+        margin-bottom: 12px;
+        font-size: 18px;
+    }
+
+    .features-reminder ul {
+        list-style: none;
+        padding-left: 0;
+        margin-top: 12px;
+    }
+
+    .features-reminder li {
+        padding: 8px 0;
+        color: var(--dark);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cancel-container">
+    <div class="cancel-icon">😔</div>
+    <h1 class="cancel-title">Subscription Process Canceled</h1>
+
+    <p class="cancel-message">
+        No worries! Your subscription process has been canceled and no charges have been made.
+    </p>
+
+    <div class="info-box">
+        <h3>💚 You Still Have Access to Free Plan</h3>
+        <p>
+            You can continue using DevOrganizer with the Free plan, which includes:
+        </p>
+        <ul style="list-style: none; padding: 0; margin-top: 12px;">
+            <li style="padding: 8px 0; color: var(--dark);">✅ 1 Project</li>
+            <li style="padding: 8px 0; color: var(--dark);">✅ 1 Time Estimation</li>
+            <li style="padding: 8px 0; color: var(--dark);">✅ 1 Feature Suggestion</li>
+            <li style="padding: 8px 0; color: var(--dark);">✅ AI Project Planning</li>
+        </ul>
+    </div>
+
+    <div class="features-reminder">
+        <h4>✨ Missing Out on Pro Features</h4>
+        <p>With Pro plan, you would get:</p>
+        <ul>
+            <li>📊 <strong>20 Projects, Estimations & Suggestions</strong> (vs 1 each)</li>
+            <li>📋 <strong>ClickUp Integration</strong> - Export tasks seamlessly</li>
+            <li>🎁 <strong>30 Days Free Trial</strong> - No charge until trial ends</li>
+            <li>💰 <strong>Only $4/month</strong> - Cancel anytime</li>
+        </ul>
+    </div>
+
+    <div class="action-buttons">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+            🏠 Go to Dashboard
+        </a>
+        <a href="{{ url_for('web_signup') }}?plan=pro" class="btn btn-success">
+            🚀 Try Pro Free for 30 Days
+        </a>
+    </div>
+
+    <p style="margin-top: 32px; color: var(--gray); font-size: 14px;">
+        Changed your mind? You can upgrade to Pro anytime from your dashboard.
+    </p>
+</div>
+{% endblock %}

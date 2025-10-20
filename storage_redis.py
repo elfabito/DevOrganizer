@@ -269,7 +269,7 @@ class RedisUserStorage:
     def _user_email_index(self, email: str) -> str:
         return f"user_email:{email}"
 
-    def create_user(self, email: str, name: str, password_hash: str) -> Dict:
+    def create_user(self, email: str, name: str, password_hash: str, plan_type: str = 'free') -> Dict:
         """Create a new user"""
         # Check if user already exists
         existing_id = self.r.get(self._user_email_index(email))
@@ -288,7 +288,14 @@ class RedisUserStorage:
             'updated_at': now,
             'is_active': True,
             'clickup_token': None,
-            'last_login': None
+            'last_login': None,
+            # Subscription fields
+            'plan_type': plan_type,  # 'free' or 'pro'
+            'stripe_customer_id': None,
+            'stripe_subscription_id': None,
+            'subscription_status': None,  # 'trialing', 'active', 'canceled', 'past_due'
+            'subscription_current_period_end': None,
+            'trial_end': None
         }
 
         # Store user data
@@ -302,7 +309,8 @@ class RedisUserStorage:
             'name': name,
             'created_at': now,
             'updated_at': now,
-            'is_active': True
+            'is_active': True,
+            'plan_type': plan_type
         }
 
     def get_user_by_id(self, user_id: str) -> Optional[Dict]:
@@ -406,3 +414,62 @@ class RedisUserStorage:
 
         self.r.set(self._user_key(user_id), json.dumps(user))
         return True
+
+    # Subscription management methods
+    def get_user_subscription(self, user_id: str) -> Optional[Dict]:
+        """Get user's subscription information"""
+        user = self.get_user_by_id(user_id)
+        if not user:
+            return None
+
+        return {
+            'plan_type': user.get('plan_type', 'free'),
+            'stripe_customer_id': user.get('stripe_customer_id'),
+            'stripe_subscription_id': user.get('stripe_subscription_id'),
+            'subscription_status': user.get('subscription_status'),
+            'subscription_current_period_end': user.get('subscription_current_period_end'),
+            'trial_end': user.get('trial_end')
+        }
+
+    def update_user_subscription(self, user_id: str, **fields) -> bool:
+        """Update user's subscription information"""
+        user = self.get_user_by_id(user_id)
+        if not user:
+            return False
+
+        # Allowed subscription fields to update
+        allowed_fields = {
+            'plan_type', 'stripe_customer_id', 'stripe_subscription_id',
+            'subscription_status', 'subscription_current_period_end', 'trial_end'
+        }
+
+        # Update only allowed fields
+        for key, value in fields.items():
+            if key in allowed_fields:
+                user[key] = value
+
+        user['updated_at'] = datetime.now(timezone.utc).isoformat()
+        self.r.set(self._user_key(user_id), json.dumps(user))
+        return True
+
+    def get_user_usage_counts(self, user_id: str) -> Dict:
+        """Get count of user's projects, estimations, and feature suggestions"""
+        # Count projects
+        project_ids = self.r.smembers(f"user_projects:{user_id}") or set()
+        projects_count = len(project_ids)
+
+        # Count estimations
+        estimation_ids = self.r.smembers(f"user_estimations:{user_id}") or set()
+        estimations_count = len(estimation_ids)
+
+        # Count feature suggestions
+        suggestions_count = 0
+        for pid in project_ids:
+            suggestion_ids = self.r.lrange(f"project_suggestions:{pid}", 0, -1) or []
+            suggestions_count += len(suggestion_ids)
+
+        return {
+            'projects': projects_count,
+            'estimations': estimations_count,
+            'feature_suggestions': suggestions_count
+        }

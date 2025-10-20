@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOrganizer - AI-Powered Project Planning for Developers</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --gray: #6b7280;
+            --light-gray: #f3f4f6;
+            --border: #e5e7eb;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: var(--white);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: var(--white);
+            font-size: 16px;
+            padding: 14px 32px;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--white);
+            padding: 80px 20px;
+            text-align: center;
+        }
+
+        .hero-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 20px;
+            margin-bottom: 32px;
+            opacity: 0.95;
+        }
+
+        .hero-image {
+            font-size: 120px;
+            margin-bottom: 32px;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 80px 20px;
+            background: var(--white);
+        }
+
+        .features-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 36px;
+            margin-bottom: 16px;
+            color: var(--dark);
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 18px;
+            color: var(--gray);
+            margin-bottom: 60px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 32px;
+            margin-bottom: 60px;
+        }
+
+        .feature-card {
+            background: var(--light-gray);
+            padding: 32px;
+            border-radius: 12px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .feature-card h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+            color: var(--dark);
+        }
+
+        .feature-card p {
+            color: var(--gray);
+            font-size: 15px;
+        }
+
+        /* Pricing Section */
+        .pricing {
+            padding: 80px 20px;
+            background: var(--light-gray);
+        }
+
+        .pricing-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 32px;
+            margin-top: 48px;
+        }
+
+        .pricing-card {
+            background: var(--white);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .pricing-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+
+        .pricing-card.featured {
+            border: 3px solid var(--primary);
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: -12px;
+            right: 24px;
+            background: var(--success);
+            color: var(--white);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .plan-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--dark);
+        }
+
+        .plan-price {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .plan-price span {
+            font-size: 18px;
+            color: var(--gray);
+        }
+
+        .plan-description {
+            color: var(--gray);
+            margin-bottom: 24px;
+            font-size: 15px;
+        }
+
+        .plan-features {
+            list-style: none;
+            margin-bottom: 32px;
+        }
+
+        .plan-features li {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .plan-features li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-check {
+            color: var(--success);
+            font-size: 20px;
+        }
+
+        .feature-cross {
+            color: var(--danger);
+            font-size: 20px;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--dark);
+            color: var(--white);
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 32px;
+            }
+
+            .hero p {
+                font-size: 16px;
+            }
+
+            .section-title {
+                font-size: 28px;
+            }
+
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/home" class="logo">
+                <span>🚀</span>
+                DevOrganizer
+            </a>
+            <div class="nav-buttons">
+                {% if current_user %}
+                    <a href="{{ url_for('index') }}" class="btn btn-outline">Go to Dashboard</a>
+                    <a href="{{ url_for('create_stripe_checkout') }}" class="btn btn-primary">Upgrade to Pro</a>
+                {% else %}
+                    <a href="{{ url_for('web_login') }}" class="btn btn-outline">Log in</a>
+                    <a href="{{ url_for('web_signup') }}" class="btn btn-primary">Sign up</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-image">💻</div>
+            <h1>AI-Powered Project Planning for Developers</h1>
+            <p>Transform your ideas into structured, actionable development plans with intelligent AI assistance</p>
+            <a href="{{ url_for('web_signup') }}" class="btn btn-success">Get Started Free</a>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="features-container">
+            <h2 class="section-title">Everything You Need to Organize Your Projects</h2>
+            <p class="section-subtitle">Powerful AI-driven features to streamline your development workflow</p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">✨</div>
+                    <h3>AI Project Planning</h3>
+                    <p>Generate comprehensive project plans with tech stack recommendations, milestones, and technical questions</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">⏱️</div>
+                    <h3>Time Estimations</h3>
+                    <p>Get accurate time estimates broken down by phases and tasks. Refine estimates based on your feedback</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📝</div>
+                    <h3>Weekly Summaries</h3>
+                    <p>Track progress with AI-generated weekly summaries. Keep stakeholders informed effortlessly</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">💡</div>
+                    <h3>Feature Suggestions</h3>
+                    <p>Audit your project and get intelligent feature suggestions to enhance your product</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h3>ClickUp Integration</h3>
+                    <p>Export your AI-generated tasks directly to ClickUp with one click (Pro plan only)</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Secure & Private</h3>
+                    <p>Your data is encrypted and stored securely. We never share your project information</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing">
+        <div class="pricing-container">
+            <h2 class="section-title">Simple, Transparent Pricing</h2>
+            <p class="section-subtitle">Choose the plan that's right for you</p>
+
+            <div class="pricing-grid">
+                <!-- Free Plan -->
+                <div class="pricing-card">
+                    <div class="plan-name">Free Plan</div>
+                    <div class="plan-price">$0<span>/month</span></div>
+                    <div class="plan-description">Perfect for trying out DevOrganizer</div>
+
+                    <ul class="plan-features">
+                        <li>
+                            <span class="feature-check">✅</span>
+                            <span>1 Project</span>
+                        </li>
+                        <li>
+                            <span class="feature-check">✅</span>
+                            <span>1 Time Estimation</span>
+                        </li>
+                        <li>
+                            <span class="feature-check">✅</span>
+                            <span>1 Feature Suggestion</span>
+                        </li>
+                        <li>
+                            <span class="feature-check">✅</span>
+                            <span>AI Project Planning</span>
+                        </li>
+                        <li>
+                            <span class="feature-check">✅</span>
+                            <span>Weekly Summaries</span>
+                        </li>
+                        <li>
+                            <span class="feature-cross">❌</span>
+                            <span>ClickUp Integration</span>
+                        </li>
+                    </ul>
+
+                    <a href="{{ url_for('web_signup') }}" class="btn btn-outline" style="width: 100%;">Start Free</a>
+                </div>
+
+                <!-- Pro Plan -->
+                <div class="pricing-card featured">
+                    <div class="pricing-badge">🎁 30 DAYS FREE TRIAL</div>
+                    <div class="plan-name">Pro Plan</div>
+                    <div class="plan-price">$4<span>/month</span></div>
+                    <div class="plan-description">For serious developers who need more</div>
+
+                    <ul class="plan-features">
+                        <li>
+                            <span class="feature-check">✅</span>
+                            <span>20 Projects</span>
+                        </li>
+                        <li>
+                            <span class="feature-check">✅</span>
+                            <span>20 Time Estimations</span>
+                        </li>
+                        <li>
+                            <span class="feature-check">✅</span>
+                            <span>20 Feature Suggestions</span>
+                        </li>
+                        <li>
+                            <span class="feature-check">✅</span>
+                            <span>AI Project Planning</span>
+                        </li>
+                        <li>
+                            <span class="feature-check">✅</span>
+                            <span>Weekly Summaries</span>
+                        </li>
+                        <li>
+                            <span class="feature-check">✅</span>
+                            <span>ClickUp Integration</span>
+                        </li>
+                    </ul>
+
+                    <a href="{{ url_for('web_signup') }}?plan=pro" class="btn btn-success" style="width: 100%;">Try Pro Free for 30 Days</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <p>Made with ❤️ for developers | DevOrganizer v1.0</p>
+            <p style="margin-top: 8px; opacity: 0.8;">© 2025 DevOrganizer. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>

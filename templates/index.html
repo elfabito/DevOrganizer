@@ -201,6 +201,63 @@
 {% endblock %}
 
 {% block content %}
+<!-- Usage Limits Widget -->
+<div id="usageLimitsWidget" style="background: var(--white); padding: 20px; border-radius: 12px; margin-bottom: 24px; border: 2px solid var(--border);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 18px; color: var(--dark);">📊 Your Usage</h3>
+        <span id="currentPlanBadge" class="plan-badge" style="margin-left: 0;"></span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+        <div class="usage-item">
+            <div style="font-size: 13px; color: var(--gray); margin-bottom: 4px;">Projects</div>
+            <div style="font-size: 24px; font-weight: 700; color: var(--primary);">
+                <span id="projectsCount">-</span> / <span id="projectsMax">-</span>
+            </div>
+            <div class="usage-bar" style="margin-top: 8px;">
+                <div id="projectsBar" class="usage-bar-fill" style="height: 6px; background: var(--light-gray); border-radius: 3px; overflow: hidden;">
+                    <div style="height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); width: 0%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="usage-item">
+            <div style="font-size: 13px; color: var(--gray); margin-bottom: 4px;">Estimations</div>
+            <div style="font-size: 24px; font-weight: 700; color: var(--secondary);">
+                <span id="estimationsCount">-</span> / <span id="estimationsMax">-</span>
+            </div>
+            <div class="usage-bar" style="margin-top: 8px;">
+                <div id="estimationsBar" class="usage-bar-fill" style="height: 6px; background: var(--light-gray); border-radius: 3px; overflow: hidden;">
+                    <div style="height: 100%; background: linear-gradient(90deg, var(--secondary), var(--primary)); width: 0%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="usage-item">
+            <div style="font-size: 13px; color: var(--gray); margin-bottom: 4px;">Feature Suggestions</div>
+            <div style="font-size: 24px; font-weight: 700; color: var(--success);">
+                <span id="suggestionsCount">-</span> / <span id="suggestionsMax">-</span>
+            </div>
+            <div class="usage-bar" style="margin-top: 8px;">
+                <div id="suggestionsBar" class="usage-bar-fill" style="height: 6px; background: var(--light-gray); border-radius: 3px; overflow: hidden;">
+                    <div style="height: 100%; background: linear-gradient(90deg, var(--success), #059669); width: 0%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="upgradePrompt" style="display: none; margin-top: 16px; padding: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1)); border-radius: 8px; border-left: 4px solid var(--primary);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--dark); font-size: 14px;">
+                <strong>Need more?</strong> Upgrade to Pro for 20x the limits + ClickUp integration
+            </span>
+            <a href="/create-checkout-session" class="btn btn-success btn-sm">
+                ⬆️ Upgrade to Pro
+            </a>
+        </div>
+    </div>
+</div>
+
 <div class="page-header">
     <h2>Your Projects</h2>
     <p>Manage and organize your development projects with AI-powered planning</p>
@@ -282,4 +339,71 @@
         <a href="{{ url_for('create_estimation_form') }}" class="btn btn-primary">⏱️ Create Estimation</a>
     </div>
 {% endif %}
+
+<script>
+// Load usage data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadUsageData();
+});
+
+async function loadUsageData() {
+    try {
+        const response = await fetch('/api/user/usage', {
+            method: 'GET',
+            credentials: 'same-origin'
+        });
+
+        if (!response.ok) {
+            console.error('Failed to load usage data');
+            return;
+        }
+
+        const data = await response.json();
+
+        // Update plan badge
+        const planBadge = document.getElementById('currentPlanBadge');
+        if (data.plan_type === 'pro') {
+            planBadge.textContent = 'Pro Plan';
+            planBadge.className = 'plan-badge';
+        } else {
+            planBadge.textContent = 'Free Plan';
+            planBadge.className = 'plan-badge free';
+        }
+
+        // Update projects
+        document.getElementById('projectsCount').textContent = data.usage.projects;
+        document.getElementById('projectsMax').textContent = data.limits.projects;
+        updateUsageBar('projectsBar', data.usage.projects, data.limits.projects);
+
+        // Update estimations
+        document.getElementById('estimationsCount').textContent = data.usage.estimations;
+        document.getElementById('estimationsMax').textContent = data.limits.estimations;
+        updateUsageBar('estimationsBar', data.usage.estimations, data.limits.estimations);
+
+        // Update suggestions
+        document.getElementById('suggestionsCount').textContent = data.usage.feature_suggestions;
+        document.getElementById('suggestionsMax').textContent = data.limits.feature_suggestions;
+        updateUsageBar('suggestionsBar', data.usage.feature_suggestions, data.limits.feature_suggestions);
+
+        // Show upgrade prompt if on free plan
+        if (data.plan_type === 'free') {
+            document.getElementById('upgradePrompt').style.display = 'block';
+        }
+
+    } catch (error) {
+        console.error('Error loading usage data:', error);
+    }
+}
+
+function updateUsageBar(barId, current, max) {
+    const percentage = max > 0 ? (current / max * 100) : 0;
+    const bar = document.getElementById(barId);
+    if (bar) {
+        const fill = bar.querySelector('div');
+        if (fill) {
+            fill.style.width = Math.min(percentage, 100) + '%';
+        }
+    }
+}
+</script>
 {% endblock %}

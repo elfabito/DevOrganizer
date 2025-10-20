@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Subscription Successful - Dev Project Organizer{% endblock %}
+
+{% block header_title %}Welcome to Pro!{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .success-container {
+        max-width: 600px;
+        margin: 60px auto;
+        text-align: center;
+    }
+
+    .success-icon {
+        font-size: 80px;
+        margin-bottom: 24px;
+        animation: bounce 1s ease-in-out;
+    }
+
+    @keyframes bounce {
+        0%, 100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(-20px);
+        }
+    }
+
+    .success-title {
+        font-size: 32px;
+        color: var(--dark);
+        margin-bottom: 16px;
+    }
+
+    .success-message {
+        font-size: 18px;
+        color: var(--gray);
+        margin-bottom: 32px;
+        line-height: 1.6;
+    }
+
+    .success-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, var(--success), #059669);
+        color: var(--white);
+        padding: 12px 32px;
+        border-radius: 24px;
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 32px;
+    }
+
+    .features-list {
+        background: var(--light-gray);
+        padding: 32px;
+        border-radius: 12px;
+        margin-bottom: 32px;
+        text-align: left;
+    }
+
+    .features-list h3 {
+        font-size: 20px;
+        color: var(--dark);
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .features-list ul {
+        list-style: none;
+        padding: 0;
+    }
+
+    .features-list li {
+        padding: 12px 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .features-list li:last-child {
+        border-bottom: none;
+    }
+
+    .feature-icon-check {
+        color: var(--success);
+        font-size: 24px;
+    }
+
+    .trial-info {
+        background: #dbeafe;
+        border-left: 4px solid var(--primary);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 32px;
+        text-align: left;
+    }
+
+    .trial-info h4 {
+        color: var(--primary);
+        margin-bottom: 8px;
+        font-size: 18px;
+    }
+
+    .trial-info p {
+        color: var(--dark);
+        font-size: 15px;
+        line-height: 1.6;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="success-container">
+    <div class="success-icon">🎉</div>
+    <h1 class="success-title">Welcome to DevOrganizer Pro!</h1>
+
+    <div class="success-badge">30-Day Free Trial Active</div>
+
+    <p class="success-message">
+        Your Pro subscription has been activated successfully. You now have access to all premium features!
+    </p>
+
+    <div class="trial-info">
+        <h4>📅 Your Trial Period</h4>
+        <p>
+            You have <strong>30 days of free access</strong> to all Pro features. Your card will be charged $4/month
+            after the trial ends on <strong>{{ trial_end_date }}</strong>. You can cancel anytime before then.
+        </p>
+    </div>
+
+    <div class="features-list">
+        <h3>✨ What's Included in Your Pro Plan</h3>
+        <ul>
+            <li>
+                <span class="feature-icon-check">✅</span>
+                <span><strong>20 Projects</strong> - Create up to 20 development projects</span>
+            </li>
+            <li>
+                <span class="feature-icon-check">✅</span>
+                <span><strong>20 Time Estimations</strong> - Accurate AI-powered estimates</span>
+            </li>
+            <li>
+                <span class="feature-icon-check">✅</span>
+                <span><strong>20 Feature Suggestions</strong> - Get intelligent recommendations</span>
+            </li>
+            <li>
+                <span class="feature-icon-check">✅</span>
+                <span><strong>ClickUp Integration</strong> - Export tasks seamlessly</span>
+            </li>
+            <li>
+                <span class="feature-icon-check">✅</span>
+                <span><strong>Weekly Summaries</strong> - AI-generated progress reports</span>
+            </li>
+            <li>
+                <span class="feature-icon-check">✅</span>
+                <span><strong>Priority Support</strong> - Get help when you need it</span>
+            </li>
+        </ul>
+    </div>
+
+    <div class="action-buttons">
+        <a href="{{ url_for('index') }}" class="btn btn-success">
+            🚀 Start Creating Projects
+        </a>
+        <a href="{{ url_for('create_project_form') }}" class="btn btn-primary">
+            ➕ Create Your First Project
+        </a>
+    </div>
+
+    <p style="margin-top: 32px; color: var(--gray); font-size: 14px;">
+        Need to manage your subscription? Visit your
+        <a href="#" onclick="manageSubscription()" style="color: var(--primary);">subscription settings</a>
+    </p>
+</div>
+
+<script>
+    function manageSubscription() {
+        // Redirect to customer portal
+        window.location.href = '/create-portal-session';
+    }
+
+    // Display trial end date (if provided in URL params)
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+
+    // Calculate trial end date (30 days from now)
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + 30);
+    const formattedDate = trialEnd.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    // Update the trial end date in the page
+    const trialEndElements = document.querySelectorAll('.trial-info strong:last-child');
+    if (trialEndElements.length > 0) {
+        trialEndElements[0].textContent = formattedDate;
+    }
+</script>
+{% endblock %}

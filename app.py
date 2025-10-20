@@ -17,6 +17,20 @@ from ai_service import generate_plan, generate_weekly_summary, generate_feature_
 from functools import wraps
 import uuid
 import redis
+from stripe_service import (
+    create_checkout_session,
+    create_customer_portal_session,
+    handle_webhook_event,
+    get_stripe_config
+)
+from subscription_limits import (
+    check_resource_limit,
+    require_plan,
+    get_user_plan_limits,
+    can_use_clickup
+)
+
+
 from dotenv import load_dotenv
 load_dotenv('.env') 
 # Add CSRF token verification function
@@ -164,12 +178,16 @@ def after_request(response):
 
 
 @app.route('/')
-@login_required
 def index():
     """
     Home page - displays list of all projects and estimations for the current user
+    Redirects to landing page if not logged in
     """
     from flask import session, current_app, redirect, url_for, render_template, request, jsonify
+
+    # If user is not logged in, redirect to landing page
+    if 'user_id' not in session:
+        return redirect(url_for('landing_page'))
 
     try:
         current_app.logger.debug("[INDEX] ===== Starting index route =====")
@@ -305,8 +323,8 @@ def web_login():
 
     # Handle GET request
     if request.method == 'GET':
-        if 'user_id' in session:
-            return redirect(url_for('index'))
+        # Allow users to view login page even if logged in
+        # (they might want to switch accounts)
 
         # Clean up problematic 'next' URLs that could cause loops
         next_url = session.get('next')
@@ -399,11 +417,8 @@ def web_login():
 @app.route('/web_signup', methods=['GET', 'POST'])
 def web_signup():
     """Handle web form signup"""
-    # If user is already logged in, redirect to home
-    if 'user_id' in session:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'redirect': url_for('index')})
-        return redirect(url_for('index'))
+    # Allow users to view signup page even if logged in
+    # (they might want to create another account or switch)
 
     if request.method == 'POST':
         try:
@@ -484,7 +499,7 @@ def web_signup():
                 'updated_at': user.get('updated_at', ''),
                 'is_active': bool(user.get('is_active', True))
             }
-
+            
             # Set up session - preserve CSRF token and session ID
             # Don't use session.clear() as it removes CSRF token
             session['user_id'] = str(user['id'])
@@ -493,12 +508,21 @@ def web_signup():
             session.permanent = True
             session.modified = True
 
+            # Check if user wants Pro plan
+            plan_param = request.args.get('plan', 'free')
+
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                redirect_url = url_for('create_stripe_checkout') if plan_param == 'pro' else url_for('index')
                 return jsonify({
                     'message': 'Registration successful',
                     'user': user_data,
-                    'redirect': url_for('index')
+                    'redirect': redirect_url
                 })
+
+            if plan_param == 'pro':
+                # Redirect to checkout for Pro subscription
+                flash('Complete your Pro subscription to unlock all features!', 'info')
+                return redirect(url_for('create_stripe_checkout'))
 
             flash('Registration successful!', 'success')
             return redirect(url_for('index'))
@@ -717,6 +741,7 @@ def generate_project_plan():
 
 @app.route('/api/projects', methods=['POST'])
 @login_required
+@check_resource_limit('project')
 def save_project():
     """
     Save a project with its AI-generated data
@@ -1138,6 +1163,7 @@ def delete_weekly_summary(summary_id):
 
 @app.route('/generate-feature-suggestions', methods=['POST'])
 @login_required
+@check_resource_limit('feature_suggestion')
 def generate_feature_suggestions_endpoint():
     """
     API endpoint to generate AI feature suggestions from project audit with database integration
@@ -1194,6 +1220,7 @@ def generate_feature_suggestions_endpoint():
 
 @app.route('/generate-estimation', methods=['POST'])
 @login_required
+@check_resource_limit('estimation')
 def generate_estimation_endpoint():
     """
     API endpoint to generate AI project estimation
@@ -1631,6 +1658,7 @@ def refine_estimation(estimation_id):
 
 @app.route('/clickup/check-config', methods=['GET'])
 @login_required
+@require_plan('pro')
 def check_clickup_config():
     """
     Check if current user has ClickUp API token configured
@@ -1660,6 +1688,7 @@ def check_clickup_config():
 
 @app.route('/clickup/workspaces', methods=['GET'])
 @login_required
+@require_plan('pro')
 def get_clickup_workspaces():
     """
     Get all ClickUp workspaces for the authenticated user using their personal token
@@ -1698,6 +1727,7 @@ def get_clickup_workspaces():
 
 @app.route('/clickup/spaces/<team_id>', methods=['GET'])
 @login_required
+@require_plan('pro')
 def get_clickup_spaces(team_id):
     """
     Get all spaces (projects) within a ClickUp workspace using user's personal token
@@ -1736,6 +1766,7 @@ def get_clickup_spaces(team_id):
 
 @app.route('/clickup/shared-lists/<team_id>', methods=['GET'])
 @login_required
+@require_plan('pro')
 def get_clickup_shared_lists(team_id):
     """
     Get all lists shared with the user in a workspace using user's personal token
@@ -1774,6 +1805,7 @@ def get_clickup_shared_lists(team_id):
 
 @app.route('/clickup/folders/<space_id>', methods=['GET'])
 @login_required
+@require_plan('pro')
 def get_clickup_folders(space_id):
     """
     Get all folders within a ClickUp space using user's personal token
@@ -1813,6 +1845,7 @@ def get_clickup_folders(space_id):
 @app.route('/clickup/lists/<space_id>', methods=['GET'])
 @app.route('/clickup/lists/<space_id>/<folder_id>', methods=['GET'])
 @login_required
+@require_plan('pro')
 def get_clickup_lists(space_id, folder_id=None):
     """
     Get all lists within a ClickUp space or folder using user's personal token
@@ -1850,6 +1883,7 @@ def get_clickup_lists(space_id, folder_id=None):
 
 @app.route('/clickup/create-tasks', methods=['POST'])
 @login_required
+@require_plan('pro')
 def create_clickup_tasks():
     """
     Create tasks in ClickUp from project phases using user's personal token
@@ -1982,6 +2016,277 @@ def delete_user_clickup_token():
         current_app.logger.error(f'Error deleting ClickUp token: {str(e)}', exc_info=True)
         return jsonify({'error': f'Failed to remove token: {str(e)}'}), 500
 
+
+@app.route('/home')
+def landing_page():
+    '''Landing page - can be viewed by anyone (logged in or not)'''
+    # Get current user if logged in
+    user = None
+    user_id = session.get('user_id')
+    if user_id:
+        try:
+            user = user_storage.get_user_by_id(user_id)
+        except:
+            pass
+
+    return render_template('landing.html', current_user=user)
+
+
+@app.route('/create-checkout-session', methods=['POST', 'GET'])
+@login_required
+def create_stripe_checkout():
+    '''Create a Stripe Checkout Session for Pro subscription'''
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get user info
+        user = user_storage.get_user_by_id(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Check if user already has Pro
+        if user.get('plan_type') == 'pro':
+            subscription_status = user.get('subscription_status')
+            if subscription_status in ['trialing', 'active']:
+                return jsonify({
+                    'error': 'You already have an active Pro subscription',
+                    'redirect': url_for('index')
+                }), 400
+
+        # Create Stripe Checkout Session
+        session_data = create_checkout_session(
+            user_id=user_id,
+            email=user['email'],
+            plan='pro'
+        )
+
+        # For GET requests, redirect to Stripe Checkout
+        if request.method == 'GET':
+            return redirect(session_data['checkout_url'])
+
+        # For POST requests (AJAX), return JSON
+        return jsonify(session_data)
+
+    except Exception as e:
+        current_app.logger.error(f'Error creating checkout session: {str(e)}', exc_info=True)
+        if request.method == 'GET':
+            flash('Failed to create checkout session. Please try again.', 'error')
+            return redirect(url_for('index'))
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/create-portal-session', methods=['POST', 'GET'])
+@login_required
+@require_plan('pro')
+def create_stripe_portal():
+    '''Create a Stripe Customer Portal Session for subscription management'''
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get user info
+        user = user_storage.get_user_by_id(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Get Stripe customer ID
+        customer_id = user.get('stripe_customer_id')
+        if not customer_id:
+            return jsonify({'error': 'No active subscription found'}), 400
+
+        # Create portal session
+        portal_data = create_customer_portal_session(customer_id)
+
+        # For GET requests, redirect to portal
+        if request.method == 'GET':
+            return redirect(portal_data['portal_url'])
+
+        # For POST requests, return JSON
+        return jsonify(portal_data)
+
+    except Exception as e:
+        current_app.logger.error(f'Error creating portal session: {str(e)}', exc_info=True)
+        if request.method == 'GET':
+            flash('Failed to open subscription portal. Please try again.', 'error')
+            return redirect(url_for('index'))
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/subscription/success')
+@login_required
+def subscription_success():
+    '''Success page after successful subscription'''
+    return render_template('subscription_success.html')
+
+
+@app.route('/subscription/cancel')
+def subscription_cancel():
+    '''Cancel page when user cancels subscription checkout'''
+    return render_template('subscription_cancel.html')
+
+
+@app.route('/webhook', methods=['POST'])
+def stripe_webhook():
+    '''Handle Stripe webhook events'''
+    payload = request.data
+    sig_header = request.headers.get('Stripe-Signature')
+
+    try:
+        # Process the webhook event
+        event_data = handle_webhook_event(payload, sig_header)
+
+        if not event_data:
+            # Event not handled
+            return jsonify({'status': 'ignored'}), 200
+
+        event_type = event_data['event_type']
+        current_app.logger.info(f'Processing webhook: {event_type}')
+
+        # Handle checkout completion
+        if event_type == 'checkout_completed':
+            user_id = event_data.get('user_id')
+            customer_id = event_data.get('customer_id')
+            subscription_id = event_data.get('subscription_id')
+
+            if user_id and customer_id:
+                # Update user with Stripe customer and subscription IDs
+                user_storage.update_user_subscription(
+                    user_id,
+                    stripe_customer_id=customer_id,
+                    stripe_subscription_id=subscription_id,
+                    plan_type='pro',
+                    subscription_status='trialing'
+                )
+                current_app.logger.info(f'User {user_id} upgraded to Pro (trial)')
+
+        # Handle subscription creation
+        elif event_type == 'subscription_created':
+            user_id = event_data.get('user_id')
+            if user_id:
+                user_storage.update_user_subscription(
+                    user_id,
+                    subscription_status=event_data.get('status'),
+                    trial_end=event_data.get('trial_end'),
+                    subscription_current_period_end=event_data.get('current_period_end')
+                )
+
+        # Handle subscription updates (e.g., trial ending, plan changes)
+        elif event_type == 'subscription_updated':
+            customer_id = event_data.get('customer_id')
+
+            # Find user by customer_id
+            # Note: This requires iterating through users or having a reverse index
+            # For now, we'll skip if user_id is not in metadata
+            user_id = event_data.get('user_id')
+            if user_id:
+                user_storage.update_user_subscription(
+                    user_id,
+                    subscription_status=event_data.get('status'),
+                    trial_end=event_data.get('trial_end'),
+                    subscription_current_period_end=event_data.get('current_period_end')
+                )
+
+        # Handle subscription deletion/cancellation
+        elif event_type == 'subscription_deleted':
+            user_id = event_data.get('user_id')
+            if user_id:
+                user_storage.update_user_subscription(
+                    user_id,
+                    plan_type='free',
+                    subscription_status='canceled',
+                    stripe_subscription_id=None
+                )
+                current_app.logger.info(f'User {user_id} downgraded to Free')
+
+        # Handle successful payments
+        elif event_type == 'payment_succeeded':
+            current_app.logger.info(f'Payment succeeded for subscription {event_data.get("subscription_id")}')
+
+        # Handle failed payments
+        elif event_type == 'payment_failed':
+            user_id = event_data.get('user_id')
+            if user_id:
+                user_storage.update_user_subscription(
+                    user_id,
+                    subscription_status='past_due'
+                )
+                current_app.logger.warning(f'Payment failed for user {user_id}')
+
+        return jsonify({'status': 'success'}), 200
+
+    except Exception as e:
+        current_app.logger.error(f'Webhook error: {str(e)}', exc_info=True)
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/user/subscription', methods=['GET'])
+@login_required
+def get_user_subscription_info():
+    '''Get current user's subscription information'''
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        subscription = user_storage.get_user_subscription(user_id)
+        if not subscription:
+            return jsonify({'error': 'Subscription not found'}), 404
+
+        return jsonify(subscription)
+
+    except Exception as e:
+        current_app.logger.error(f'Error getting subscription: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/user/usage', methods=['GET'])
+@login_required
+def get_user_usage():
+    '''Get current user's usage statistics and limits'''
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get user's plan
+        user = user_storage.get_user_by_id(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        plan_type = user.get('plan_type', 'free')
+
+        # Get usage counts
+        usage = user_storage.get_user_usage_counts(user_id)
+
+        # Get plan limits
+        limits = get_user_plan_limits(plan_type)
+
+        return jsonify({
+            'plan_type': plan_type,
+            'usage': usage,
+            'limits': limits,
+            'subscription_status': user.get('subscription_status')
+        })
+
+    except Exception as e:
+        current_app.logger.error(f'Error getting usage: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/stripe/config', methods=['GET'])
+@login_required
+def get_stripe_public_config():
+    '''Get Stripe publishable key for client-side'''
+    try:
+        config = get_stripe_config()
+        return jsonify({
+            'publishable_key': config['publishable_key']
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/health')
 def health_check():
@@ -2173,6 +2478,15 @@ csrf.exempt(create_clickup_tasks)
 csrf.exempt(save_user_clickup_token)
 csrf.exempt(check_user_clickup_token)
 csrf.exempt(delete_user_clickup_token)
+
+
+csrf.exempt(stripe_webhook)
+csrf.exempt(get_user_subscription_info)
+csrf.exempt(get_user_usage)
+
+
+
+
 if __name__ == '__main__':
     # Ensure templates directory exists
     os.makedirs('templates', exist_ok=True)
