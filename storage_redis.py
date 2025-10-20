@@ -57,8 +57,8 @@ class RedisProjectStorage:
             "id": sid,
             "project_id": project_id,
             "project_name": payload.get("project_name") if payload else None,
-            "week_notes": payload.get("week_notes", {}),
-            "ai_summary": payload.get("ai_summary", ""),
+            "week_notes": payload.get("week_notes", {}) if payload else {},
+            "ai_summary": payload.get("ai_summary", "") if payload else "",
             "created_at": payload.get("created_at") if payload else datetime.now(timezone.utc).isoformat()
         }
         self.r.set(f"weekly:{sid}", json.dumps(summary))
@@ -221,6 +221,21 @@ class RedisProjectStorage:
         self.r.rpush(f"project_suggestions:{project_id}", suggestion_id)
 
         return suggestion_data
+
+    def get_latest_feature_suggestions(self, project_id: str) -> Optional[Dict]:
+        """Get the most recent feature suggestions for a project"""
+        # Get the list of suggestion IDs for this project
+        suggestion_ids = self.r.lrange(f"project_suggestions:{project_id}", 0, -1)
+
+        if not suggestion_ids:
+            return None
+
+        # Get the last (most recent) suggestion ID
+        latest_id = suggestion_ids[-1]
+
+        # Retrieve the suggestion data
+        raw = self.r.get(f"feature_suggestion:{latest_id}")
+        return json.loads(raw) if raw else None
 
     # Section states for collapsible UI
     def save_section_state(self, project_id: str, section_id: str,

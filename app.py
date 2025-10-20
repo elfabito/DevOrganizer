@@ -862,9 +862,13 @@ def view_project(project_id):
         # Get weekly summaries for this project
         weekly_summaries = weekly_storage.get_weekly_summaries_by_project(project_id)
 
+        # Get the latest feature suggestions for this project
+        feature_suggestions = storage.get_latest_feature_suggestions(project_id)
+
         return render_template('project_detail.html',
                              project=project,
                              weekly_summaries=weekly_summaries,
+                             feature_suggestions=feature_suggestions,
                              current_user=user)
 
     except Exception as e:
@@ -933,8 +937,12 @@ def create_weekly_summary():
         if not project or str(project.get('user_id')) != str(user_id):
             return jsonify({'error': 'Project not found or unauthorized'}), 404
 
-        # Create new weekly summary using the storage layer
-        summary = weekly_storage.create_weekly_summary(project_id)
+        # Create new weekly summary using the storage layer with project name
+        payload = {
+            'project_name': project.get('name'),
+            'created_at': datetime.now(timezone.utc).isoformat()
+        }
+        summary = weekly_storage.create_weekly_summary(project_id, payload)
 
         return jsonify({
             'success': True,
