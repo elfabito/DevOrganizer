@@ -212,7 +212,7 @@
         <div class="project-card" onclick="window.location.href='{{ url_for('view_project', project_id=project.id) }}'">
             <h3>{{ project.name }}</h3>
             <div class="project-meta">
-                {{ project.created_at[:10] }}
+                {{ project.created_at[:10] if project.created_at else 'N/A' }}
             </div>
             <div class="project-brief">
                 {{ project.brief }}

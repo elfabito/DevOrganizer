@@ -777,12 +777,13 @@ def save_project():
                 'details': str(e)
             }), 500
 
-        # Prepare project data with user_id
+        # Prepare project data with user_id and timestamp
         project_data = {
             'name': project_name,
             'brief': project_brief,
             'ai_data': ai_data,
-            'user_id': str(user_id)  # Ensure it's a string
+            'user_id': str(user_id),  # Ensure it's a string
+            'created_at': datetime.now(timezone.utc).isoformat()  # Add timestamp
         }
 
         # Save project
@@ -837,29 +838,51 @@ def view_project(project_id):
     """
     try:
         user_id = get_current_user_id()
+
+        # Get current user from session or database
+        user = session.get('user')
+        if not user and user_id:
+            try:
+                user = user_storage.get_user_by_id(str(user_id))
+                if user:
+                    session['user'] = user
+                    session.modified = True
+            except Exception as e:
+                current_app.logger.error(f"Error fetching user in view_project: {str(e)}")
+
         project = storage.load_project(project_id)
 
         # Check if project exists and belongs to the user
         if not project or project.get('user_id') != user_id:
             return render_template('error.html',
                                  error_code=404,
-                                 error_message='Project not found'), 404
+                                 error_message='Project not found',
+                                 current_user=user), 404
 
         # Get weekly summaries for this project
         weekly_summaries = weekly_storage.get_weekly_summaries_by_project(project_id)
 
-        # Get current user for the template
-        current_user = session.get('user')
         return render_template('project_detail.html',
                              project=project,
                              weekly_summaries=weekly_summaries,
-                             current_user=current_user)
+                             current_user=user)
 
     except Exception as e:
         current_app.logger.error(f'Error loading project: {str(e)}', exc_info=True)
+
+        # Get current user for error template
+        user = session.get('user')
+        user_id = get_current_user_id()
+        if not user and user_id:
+            try:
+                user = user_storage.get_user_by_id(str(user_id))
+            except:
+                pass
+
         return render_template('error.html',
                              error_code=500,
-                             error_message=f'Error loading project: {str(e)}'), 500
+                             error_message=f'Error loading project: {str(e)}',
+                             current_user=user), 500
 
 
 @app.route('/delete-project/<project_id>', methods=['POST'])
@@ -1332,7 +1355,7 @@ def generate_estimation_endpoint():
                 'phases': estimation_data['phases'],
                 'total_hours': int(estimation_data['total_hours']),
                 'user_id': get_current_user_id(),
-                'created_at': datetime.utcnow().isoformat()
+                'created_at': datetime.now(timezone.utc).isoformat()
             }
             
             # Save the estimation

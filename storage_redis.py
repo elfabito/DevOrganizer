@@ -29,7 +29,7 @@ class RedisProjectStorage:
             "brief": project_data.get("brief", ""),
             "user_id": str(project_data.get("user_id")),
             "ai_data": project_data.get("ai_data", {}),
-            "created_at": project_data.get("created_at")
+            "created_at": project_data.get("created_at") or datetime.now(timezone.utc).isoformat()
         }
         # store JSON string
         self.r.set(self._proj_key(project_id), json.dumps(project))
@@ -137,7 +137,7 @@ class RedisProjectStorage:
             "phases": estimation_data.get("phases", []),
             "total_hours": estimation_data.get("total_hours", 0),
             "user_id": str(estimation_data.get("user_id")),
-            "created_at": estimation_data.get("created_at")
+            "created_at": estimation_data.get("created_at") or datetime.now(timezone.utc).isoformat()
         }
 
         # Store estimation
