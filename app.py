@@ -113,7 +113,6 @@ app.config['SESSION_COOKIE_NAME'] = 'devorg_session'  # Custom name to avoid con
 
 # Additional session configuration for production reliability
 app.config['SESSION_KEY_PREFIX'] = 'devorg:'  # Prefix for Redis keys to avoid collisions
-app.config['SESSION_USE_SIGNER'] = True  # Sign session cookies for extra security
 if is_production:
     app.config['PREFERRED_URL_SCHEME'] = 'https'  # Force HTTPS URLs in production
 
