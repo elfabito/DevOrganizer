@@ -83,10 +83,15 @@ if not redis_url:
     )
 
 try:
-    # Initialize Redis client
+    # Initialize Redis client for JSON data (users, projects)
+    # decode_responses=True converts bytes to strings automatically
     redis_client = redis.from_url(redis_url, decode_responses=True)
-    # Test the connection
     redis_client.ping()
+
+    # Initialize separate Redis client for Flask-Session
+    # decode_responses=False keeps binary data for pickle serialization
+    redis_session_client = redis.from_url(redis_url, decode_responses=False)
+    redis_session_client.ping()
 
     # Initialize Redis storage classes
     storage = RedisProjectStorage(redis_client)
@@ -99,7 +104,7 @@ except Exception as e:
 
 # Configure server-side sessions to use Redis
 app.config['SESSION_TYPE'] = 'redis'
-app.config['SESSION_REDIS'] = redis_client
+app.config['SESSION_REDIS'] = redis_session_client
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
