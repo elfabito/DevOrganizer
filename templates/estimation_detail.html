@@ -257,7 +257,7 @@
     <div class="estimation-meta">
         <div class="estimation-meta-item">
             <span>📅</span>
-            <span>Created: {{ estimation.created_at[:10] }}</span>
+            <span>Created: {{ estimation.created_at[:10] if estimation.created_at else 'N/A' }}</span>
         </div>
         <div class="estimation-meta-item">
             <span>🆔</span>

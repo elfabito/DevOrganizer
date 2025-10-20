@@ -260,7 +260,7 @@
         <div class="estimation-card" onclick="window.location.href='/estimation/{{ estimation.id }}'">
             <h3>{{ estimation.project_name }}</h3>
             <div class="estimation-meta">
-                <span>📅 {{ estimation.created_at[:10] }}</span>
+                <span>📅 {{ estimation.created_at[:10] if estimation.created_at else 'N/A' }}</span>
                 <span class="estimation-hours">⏱️ {{ estimation.total_hours }} hours</span>
             </div>
             <div class="estimation-description">

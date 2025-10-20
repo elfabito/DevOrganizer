@@ -502,7 +502,7 @@
     <div class="project-meta">
         <div class="project-meta-item">
             <span>📅</span>
-            <span>Created: {{ project.created_at[:10] }}</span>
+            <span>Created: {{ project.created_at[:10] if project.created_at else 'N/A' }}</span>
         </div>
         <div class="project-meta-item">
             <span>🆔</span>
@@ -748,8 +748,8 @@
                         <div style="padding: 16px;">
                             <div
                                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <strong style="color: var(--dark);">Week of {{ summary.created_at[:10] }}</strong>
-                                <span style="font-size: 12px; color: var(--gray);">{{ summary.created_at[:10] }}</span>
+                                <strong style="color: var(--dark);">Week of {{ summary.created_at[:10] if summary.created_at else 'N/A' }}</strong>
+                                <span style="font-size: 12px; color: var(--gray);">{{ summary.created_at[:10] if summary.created_at else 'N/A' }}</span>
                             </div>
                             <div style="color: var(--gray); font-size: 14px; line-height: 1.6;">
                                 {% if summary.ai_summary %}

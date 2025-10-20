@@ -59,7 +59,7 @@ class RedisProjectStorage:
             "project_name": payload.get("project_name") if payload else None,
             "week_notes": payload.get("week_notes", {}),
             "ai_summary": payload.get("ai_summary", ""),
-            "created_at": payload.get("created_at")
+            "created_at": payload.get("created_at") if payload else datetime.now(timezone.utc).isoformat()
         }
         self.r.set(f"weekly:{sid}", json.dumps(summary))
         self.r.rpush(f"project_weekly:{project_id}", sid)  # list of summaries per project

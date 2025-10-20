@@ -152,7 +152,7 @@
 
 <div class="summary-header">
     <h2>{{ summary.project_name }}</h2>
-    <p>Week of {{ summary.created_at[:10] }}</p>
+    <p>Week of {{ summary.created_at[:10] if summary.created_at else 'N/A' }}</p>
 </div>
 
 <div class="action-buttons">
