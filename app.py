@@ -459,11 +459,16 @@ def web_signup():
                                     email=email,
                                     name=name)
 
+            # Check if user wants Pro plan (before creating user)
+            plan_param = request.args.get('plan', 'free')
+
             # Hash the password before creating the user
             from auth import hash_password
             try:
                 password_hash = hash_password(password)
-                user_data = user_storage.create_user(email, name, password_hash)
+                # Always create users as 'free' initially
+                # They will be upgraded to 'pro' via webhook when they complete Stripe checkout
+                user_data = user_storage.create_user(email, name, password_hash, plan_type='free')
                 if not user_data or 'id' not in user_data:
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                         return jsonify({'error': 'Failed to create user. Please try again.'}), 500
@@ -508,8 +513,7 @@ def web_signup():
             session.permanent = True
             session.modified = True
 
-            # Check if user wants Pro plan
-            plan_param = request.args.get('plan', 'free')
+            # plan_param was already checked before user creation (line 463)
 
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 redirect_url = url_for('create_stripe_checkout') if plan_param == 'pro' else url_for('index')
