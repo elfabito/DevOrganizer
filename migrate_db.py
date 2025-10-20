@@ -78,6 +78,7 @@ def migrate_database(db_path='projects.db'):
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 last_login TEXT,
+                clickup_token TEXT,
                 is_active BOOLEAN DEFAULT 1
             )
         ''')
@@ -109,15 +110,7 @@ def migrate_database(db_path='projects.db'):
             ON estimations(user_id)
         ''')
         
-        # Check if updated_at column exists, if not add it
-        cursor.execute("PRAGMA table_info(users)")
-        columns = [column[1] for column in cursor.fetchall()]
-        if 'updated_at' not in columns:
-            print("Adding updated_at column to users table...")
-            cursor.execute('''
-                ALTER TABLE users 
-                ADD COLUMN updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            ''')
+    
         
         # Create new projects table with user_id
         cursor.execute('''

@@ -41,7 +41,8 @@ class UserStorage:
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 last_login TEXT,
-                is_active BOOLEAN DEFAULT 1
+                is_active BOOLEAN DEFAULT 1,
+                clickup_token TEXT
             )
         ''')
         
@@ -116,7 +117,7 @@ class UserStorage:
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, email, name, password_hash, created_at, updated_at, last_login, is_active
+            SELECT id, email, name, password_hash, created_at, updated_at, last_login, is_active, clickup_token
             FROM users
             WHERE id = ?
         ''', (user_id,))
@@ -145,7 +146,7 @@ class UserStorage:
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, email, name, password_hash, created_at, updated_at, last_login, is_active
+            SELECT id, email, name, password_hash, created_at, updated_at, last_login, is_active, clickup_token
             FROM users
             WHERE email = ?
         ''', (email,))
@@ -230,5 +231,95 @@ class UserStorage:
             if 'UNIQUE constraint failed: users.email' in str(e):
                 raise ValueError(f"Email '{updates.get('email')}' is already in use")
             raise
+        finally:
+            conn.close()
+
+    def save_user_clickup_token(self, user_id: str, token: str) -> bool:
+        """
+        Save ClickUp API token for a user
+
+        Args:
+            user_id: The user's unique ID
+            token: The ClickUp API token
+
+        Returns:
+            True if successful, False otherwise
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            now = datetime.utcnow().isoformat()
+            cursor.execute('''
+                UPDATE users
+                SET clickup_token = ?, updated_at = ?
+                WHERE id = ?
+            ''', (token, now, user_id))
+
+            success = cursor.rowcount > 0
+            conn.commit()
+            return success
+        except Exception as e:
+            print(f"[ERROR] Failed to save ClickUp token: {e}")
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+
+    def get_user_clickup_token(self, user_id: str) -> Optional[str]:
+        """
+        Get ClickUp API token for a user
+
+        Args:
+            user_id: The user's unique ID
+
+        Returns:
+            The ClickUp token or None if not set
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute('''
+                SELECT clickup_token
+                FROM users
+                WHERE id = ?
+            ''', (user_id,))
+
+            row = cursor.fetchone()
+            if row and row[0]:
+                return row[0]
+            return None
+        finally:
+            conn.close()
+
+    def delete_user_clickup_token(self, user_id: str) -> bool:
+        """
+        Delete ClickUp API token for a user
+
+        Args:
+            user_id: The user's unique ID
+
+        Returns:
+            True if successful, False otherwise
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            now = datetime.utcnow().isoformat()
+            cursor.execute('''
+                UPDATE users
+                SET clickup_token = NULL, updated_at = ?
+                WHERE id = ?
+            ''', (now, user_id))
+
+            success = cursor.rowcount > 0
+            conn.commit()
+            return success
+        except Exception as e:
+            print(f"[ERROR] Failed to delete ClickUp token: {e}")
+            conn.rollback()
+            return False
         finally:
             conn.close()

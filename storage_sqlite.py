@@ -99,7 +99,8 @@ class ProjectStorageSQLite:
                 created_at TEXT NOT NULL,
                        updated_at TEXT NOT NULL,
                 last_login TEXT,
-                is_active BOOLEAN DEFAULT 1
+                is_active BOOLEAN DEFAULT 1,
+                clickup_token TEXT
             )
         ''')
         

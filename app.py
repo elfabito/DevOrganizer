@@ -4,23 +4,20 @@ A tool to help developers organize and plan new projects with AI assistance
 """
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, g, flash, make_response, current_app
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
 from flask_session import Session
 from datetime import datetime, timedelta, timezone
 import os
-import sqlite3
 import logging
-from storage import ProjectStorage
-from weekly_summary_storage import WeeklySummaryStorage
-from user_storage import UserStorage
+from storage_redis import RedisProjectStorage, RedisUserStorage
 from clickup_service import get_clickup_service
 from auth import AuthError, verify_password, login_required, get_current_user_id
 from ai_service import generate_plan, generate_weekly_summary, generate_feature_suggestions, generate_estimation
 from functools import wraps
 import uuid
-
+import redis
+from dotenv import load_dotenv
+load_dotenv('.env') 
 # Add CSRF token verification function
 def verify_csrf_token(token):
     """Verify the CSRF token"""
@@ -39,29 +36,12 @@ def verify_csrf_token(token):
     # Compare the tokens
     return token == session_csrf
 
-STORAGE_TYPE = 'sqlite'  # Options: 'json' or 'sqlite'
-STORAGE_FILE = 'projects.db'
-
-# Import storage based on configuration
-if STORAGE_TYPE == 'sqlite':
-    from storage_sqlite import ProjectStorageSQLite as StorageClass
-else:
-    from storage import ProjectStorage as StorageClass
 
 # Initialize Flask app
 app = Flask(__name__)
 
-# Configure SQLAlchemy
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.abspath(STORAGE_FILE)}'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-
-# Initialize storage and user storage
-storage = StorageClass(STORAGE_FILE)
-user_storage = UserStorage(STORAGE_FILE)
-weekly_storage = WeeklySummaryStorage(STORAGE_FILE)
+# Set secret key for session management
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.getenv('FLASK_SECRET_KEY') or 'dev-secret-key-change-in-production'
 
 
 # Small helpers used by a few routes
@@ -84,49 +64,39 @@ app.config.from_pyfile('config.py', silent=True)
 app.config['ENV'] = os.getenv('FLASK_ENV', 'development')
 app.config['DEBUG'] = os.getenv('FLASK_DEBUG', '1' if app.config['ENV'] == 'development' else '0').lower() in ('1', 'true', 'on')
 
-# Session configuration
-app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-key-change-in-production')
-app.config['SESSION_TYPE'] = 'filesystem'
+# --- Redis client + session config (REQUIRED) ---
+redis_url = os.getenv('REDIS_URL')
+if not redis_url:
+    raise RuntimeError(
+        "REDIS_URL environment variable is required. "
+        "Please set it in your .env file. "
+        "Example: REDIS_URL=redis://localhost:6379/0"
+    )
+
+try:
+    # Initialize Redis client
+    redis_client = redis.from_url(redis_url, decode_responses=True)
+    # Test the connection
+    redis_client.ping()
+
+    # Initialize Redis storage classes
+    storage = RedisProjectStorage(redis_client)
+    user_storage = RedisUserStorage(redis_client)
+    weekly_storage = storage  # RedisProjectStorage handles weekly summaries
+
+    app.logger.info("✓ Successfully connected to Redis")
+except Exception as e:
+    raise RuntimeError(f"Failed to connect to Redis: {str(e)}. Please check your REDIS_URL configuration.")
+
+# Configure server-side sessions to use Redis
+app.config['SESSION_TYPE'] = 'redis'
+app.config['SESSION_REDIS'] = redis_client
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
-app.config['SESSION_FILE_DIR'] = os.path.abspath('./.flask_session')
-app.config['SESSION_COOKIE_NAME'] = 'devorg_session'
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SECURE'] = False  # Set to False for development
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # More permissive than 'Strict'
-app.config['SESSION_USE_SIGNER'] = True
-app.config['SESSION_REFRESH_EACH_REQUEST'] = True
-app.config['SESSION_PROTECTION'] = 'basic'  # Less strict for development
 
-# For development, ensure the session directory exists
-os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True, mode=0o700)
 
-# Clean old session files on startup to prevent corrupted sessions from causing loops
-import glob
-for session_file in glob.glob(os.path.join(app.config['SESSION_FILE_DIR'], '*')):
-    if not session_file.endswith('.__wz_cache'):  # Skip Werkzeug cache files
-        try:
-            os.remove(session_file)
-            app.logger.debug(f"Removed old session file: {session_file}")
-        except Exception as e:
-            app.logger.warning(f"Failed to remove session file {session_file}: {e}")
 
-# Security configuration
-app.config['PREFERRED_URL_SCHEME'] = 'https' if os.getenv('HTTPS', '').lower() in ('true', '1', 'on') else 'http'
 
-# Generate a secure secret key if not set
-secret_key = os.getenv('FLASK_SECRET_KEY')
-if not secret_key:
-    import secrets
-    secret_key = secrets.token_hex(32)
-    os.environ['FLASK_SECRET_KEY'] = secret_key
-    with open('.env', 'a') as f:
-        f.write(f'\nFLASK_SECRET_KEY={secret_key}\n')
-
-app.secret_key = secret_key
-
-# Ensure session directory exists
-os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True, mode=0o700)
 
 # Initialize Flask-Session (configuration is already set above)
 from flask_session import Session
@@ -1525,17 +1495,25 @@ def refine_estimation(estimation_id):
 @login_required
 def check_clickup_config():
     """
-    Check if ClickUp API token is configured in environment
+    Check if current user has ClickUp API token configured
     """
     try:
-        clickup = get_clickup_service()
-        has_token = bool(clickup.api_token and clickup.api_token.strip())
-        
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Check if user has token configured
+        user_token = user_storage.get_user_clickup_token(user_id)
+        has_token = bool(user_token and user_token.strip())
+
         return jsonify({
             'configured': has_token,
-            'message': 'Token configured in .env' if has_token else 'No token configured'
+            'has_token': has_token,
+            'message': 'Token configured' if has_token else 'No token configured'
         })
+
     except Exception as e:
+        current_app.logger.error(f'Error checking ClickUp config: {str(e)}', exc_info=True)
         return jsonify({
             'configured': False,
             'error': str(e)
@@ -1546,30 +1524,35 @@ def check_clickup_config():
 @login_required
 def get_clickup_workspaces():
     """
-    Get all ClickUp workspaces for the authenticated user
+    Get all ClickUp workspaces for the authenticated user using their personal token
     """
     try:
-        # Get API token from request header, or use environment variable
-        api_token = request.headers.get('X-ClickUp-Token') or None
-        
-        # Get ClickUp service
-        clickup = get_clickup_service(api_token)
-        
-        # Check if token is configured
-        if not clickup.api_token:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get user's ClickUp token from database
+        user_token = user_storage.get_user_clickup_token(user_id)
+
+        if not user_token or not user_token.strip():
             return jsonify({
-                'error': 'ClickUp API token not configured. Please add it to .env file or provide it in the request.'
+                'error': 'ClickUp API token not configured. Please configure your ClickUp token first.',
+                'needs_config': True
             }), 401
-        
+
+        # Get ClickUp service with user's token
+        clickup = get_clickup_service(user_token)
+
         # Fetch workspaces
         result = clickup.get_workspaces()
-        
+
         if 'error' in result:
             return jsonify(result), 400
-        
+
         return jsonify(result)
-        
+
     except Exception as e:
+        current_app.logger.error(f'Failed to fetch workspaces: {str(e)}', exc_info=True)
         return jsonify({
             'error': f'Failed to fetch workspaces: {str(e)}'
         }), 500
@@ -1579,24 +1562,35 @@ def get_clickup_workspaces():
 @login_required
 def get_clickup_spaces(team_id):
     """
-    Get all spaces (projects) within a ClickUp workspace
+    Get all spaces (projects) within a ClickUp workspace using user's personal token
     """
     try:
-        # Get API token from request header, or use environment variable
-        api_token = request.headers.get('X-ClickUp-Token') or None
-        
-        # Get ClickUp service
-        clickup = get_clickup_service(api_token)
-        
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get user's ClickUp token from database
+        user_token = user_storage.get_user_clickup_token(user_id)
+
+        if not user_token or not user_token.strip():
+            return jsonify({
+                'error': 'ClickUp API token not configured',
+                'needs_config': True
+            }), 401
+
+        # Get ClickUp service with user's token
+        clickup = get_clickup_service(user_token)
+
         # Fetch spaces
         result = clickup.get_spaces(team_id)
-        
+
         if 'error' in result:
             return jsonify(result), 400
-        
+
         return jsonify(result)
-        
+
     except Exception as e:
+        current_app.logger.error(f'Failed to fetch spaces: {str(e)}', exc_info=True)
         return jsonify({
             'error': f'Failed to fetch spaces: {str(e)}'
         }), 500
@@ -1606,24 +1600,35 @@ def get_clickup_spaces(team_id):
 @login_required
 def get_clickup_shared_lists(team_id):
     """
-    Get all lists shared with the user in a workspace
+    Get all lists shared with the user in a workspace using user's personal token
     """
     try:
-        # Get API token from request header, or use environment variable
-        api_token = request.headers.get('X-ClickUp-Token') or None
-        
-        # Get ClickUp service
-        clickup = get_clickup_service(api_token)
-        
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get user's ClickUp token from database
+        user_token = user_storage.get_user_clickup_token(user_id)
+
+        if not user_token or not user_token.strip():
+            return jsonify({
+                'error': 'ClickUp API token not configured',
+                'needs_config': True
+            }), 401
+
+        # Get ClickUp service with user's token
+        clickup = get_clickup_service(user_token)
+
         # Fetch shared lists
         result = clickup.get_shared_lists(team_id)
-        
+
         if 'error' in result:
             return jsonify(result), 400
-        
+
         return jsonify(result)
-        
+
     except Exception as e:
+        current_app.logger.error(f'Failed to fetch shared lists: {str(e)}', exc_info=True)
         return jsonify({
             'error': f'Failed to fetch shared lists: {str(e)}'
         }), 500
@@ -1633,24 +1638,35 @@ def get_clickup_shared_lists(team_id):
 @login_required
 def get_clickup_folders(space_id):
     """
-    Get all folders within a ClickUp space
+    Get all folders within a ClickUp space using user's personal token
     """
     try:
-        # Get API token from request header, or use environment variable
-        api_token = request.headers.get('X-ClickUp-Token') or None
-        
-        # Get ClickUp service
-        clickup = get_clickup_service(api_token)
-        
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get user's ClickUp token from database
+        user_token = user_storage.get_user_clickup_token(user_id)
+
+        if not user_token or not user_token.strip():
+            return jsonify({
+                'error': 'ClickUp API token not configured',
+                'needs_config': True
+            }), 401
+
+        # Get ClickUp service with user's token
+        clickup = get_clickup_service(user_token)
+
         # Fetch folders
         result = clickup.get_folders(space_id)
-        
+
         if 'error' in result:
             return jsonify(result), 400
-        
+
         return jsonify(result)
-        
+
     except Exception as e:
+        current_app.logger.error(f'Failed to fetch folders: {str(e)}', exc_info=True)
         return jsonify({
             'error': f'Failed to fetch folders: {str(e)}'
         }), 500
@@ -1661,18 +1677,28 @@ def get_clickup_folders(space_id):
 @login_required
 def get_clickup_lists(space_id, folder_id=None):
     """
-    Get all lists within a ClickUp space or folder
+    Get all lists within a ClickUp space or folder using user's personal token
     """
     try:
-        # Get API token from request header, or use environment variable
-        api_token = request.headers.get('X-ClickUp-Token') or None
-        
-        # Get ClickUp service
-        clickup = get_clickup_service(api_token)
-        
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get user's ClickUp token from database
+        user_token = user_storage.get_user_clickup_token(user_id)
+
+        if not user_token or not user_token.strip():
+            return jsonify({
+                'error': 'ClickUp API token not configured',
+                'needs_config': True
+            }), 401
+
+        # Get ClickUp service with user's token
+        clickup = get_clickup_service(user_token)
+
         # Fetch lists
         result = clickup.get_lists(space_id, folder_id)
-        
+
         if 'error' in result:
             return jsonify(result), 400
         
@@ -1688,42 +1714,135 @@ def get_clickup_lists(space_id, folder_id=None):
 @login_required
 def create_clickup_tasks():
     """
-    Create tasks in ClickUp from project phases
+    Create tasks in ClickUp from project phases using user's personal token
     """
     try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
         data = request.get_json()
         list_id = data.get('list_id')
         phases = data.get('phases', [])
-        
-        # Get API token from request header, or use environment variable
-        api_token = request.headers.get('X-ClickUp-Token') or None
-        
+
         # Validate input
         if not list_id:
-            return jsonify({
-                'error': 'List ID is required'
-            }), 400
-        
+            return jsonify({'error': 'List ID is required'}), 400
+
         if not phases:
+            return jsonify({'error': 'No tasks to create'}), 400
+
+        # Get user's ClickUp token from database
+        user_token = user_storage.get_user_clickup_token(user_id)
+
+        if not user_token or not user_token.strip():
             return jsonify({
-                'error': 'No tasks to create'
-            }), 400
-        
-        # Get ClickUp service
-        clickup = get_clickup_service(api_token)
-        
+                'error': 'ClickUp API token not configured',
+                'needs_config': True
+            }), 401
+
+        # Get ClickUp service with user's token
+        clickup = get_clickup_service(user_token)
+
         # Create tasks
+        current_app.logger.info(f'Creating {len(phases)} phases of tasks in ClickUp for user {user_id}')
         result = clickup.create_tasks_from_phases(list_id, phases)
-        
+
         if 'error' in result:
             return jsonify(result), 400
-        
+
         return jsonify(result)
-        
+
     except Exception as e:
+        current_app.logger.error(f'Failed to create tasks: {str(e)}', exc_info=True)
         return jsonify({
             'error': f'Failed to create tasks: {str(e)}'
         }), 500
+
+
+@app.route('/api/user/clickup-token', methods=['POST'])
+@login_required
+def save_user_clickup_token():
+    """
+    Save ClickUp API token for the current user
+    """
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        data = request.get_json() or {}
+        token = (data.get('token') or '').strip()
+
+        if not token:
+            return jsonify({'error': 'ClickUp API token is required'}), 400
+
+        # Save token to database
+        success = user_storage.save_user_clickup_token(user_id, token)
+
+        if success:
+            current_app.logger.info(f'ClickUp token saved for user {user_id}')
+            return jsonify({
+                'success': True,
+                'message': 'ClickUp token saved successfully'
+            })
+        else:
+            return jsonify({'error': 'Failed to save token'}), 500
+
+    except Exception as e:
+        current_app.logger.error(f'Error saving ClickUp token: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to save token: {str(e)}'}), 500
+
+
+@app.route('/api/user/clickup-token/check', methods=['GET'])
+@login_required
+def check_user_clickup_token():
+    """
+    Check if current user has a ClickUp API token configured
+    """
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        token = user_storage.get_user_clickup_token(user_id)
+        has_token = bool(token and token.strip())
+
+        return jsonify({
+            'configured': has_token,
+            'has_token': has_token
+        })
+
+    except Exception as e:
+        current_app.logger.error(f'Error checking ClickUp token: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to check token: {str(e)}'}), 500
+
+
+@app.route('/api/user/clickup-token', methods=['DELETE'])
+@login_required
+def delete_user_clickup_token():
+    """
+    Delete ClickUp API token for the current user
+    """
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        success = user_storage.delete_user_clickup_token(user_id)
+
+        if success:
+            current_app.logger.info(f'ClickUp token deleted for user {user_id}')
+            return jsonify({
+                'success': True,
+                'message': 'ClickUp token removed successfully'
+            })
+        else:
+            return jsonify({'error': 'Failed to remove token'}), 500
+
+    except Exception as e:
+        current_app.logger.error(f'Error deleting ClickUp token: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to remove token: {str(e)}'}), 500
 
 
 @app.route('/health')
@@ -1906,38 +2025,27 @@ csrf.exempt(get_section_states)
 csrf.exempt(delete_estimation)
 
 # ClickUp integration endpoints
+csrf.exempt(check_clickup_config)
+csrf.exempt(get_clickup_workspaces)
+csrf.exempt(get_clickup_spaces)
+csrf.exempt(get_clickup_shared_lists)
+csrf.exempt(get_clickup_folders)
+csrf.exempt(get_clickup_lists)
 csrf.exempt(create_clickup_tasks)
+csrf.exempt(save_user_clickup_token)
+csrf.exempt(check_user_clickup_token)
+csrf.exempt(delete_user_clickup_token)
 if __name__ == '__main__':
     # Ensure templates directory exists
     os.makedirs('templates', exist_ok=True)
-    
-    # Ensure database exists and run migrations
-    db_dir = os.path.dirname(os.path.abspath(__file__))
-    db_path = os.path.join(db_dir, 'projects.db')
-    
-    # Ensure the database directory exists and is writable
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    
-    print(f"Using database at: {db_path}")
-    
-    # Run migrations
-    try:
-        from migrate_db import migrate_database
-        print("Running database migrations...")
-        migrate_database(db_path)
-        print("Database migrations completed successfully")
-    except Exception as e:
-        print(f"Error running database migrations: {str(e)}")
-        print("Please check database permissions and try again")
-        import sys
-        sys.exit(1)
-    
+
     # Print startup message
     print("🚀 Dev Project Organizer Starting...")
     print("=" * 60)
-    print(f"📂 Database: {db_path}")
-    print("🌐 Server: http://127.0.0.1:5000")
+    print(f"📊 Storage: Redis")
+    print(f"🔗 Redis URL: {redis_url.split('@')[1] if '@' in redis_url else redis_url.replace('redis://', '')}")
+    print(f"🌐 Server: http://127.0.0.1:5000")
     print("=" * 60)
-    
+
     # Start the development server
     app.run(debug=True, host='127.0.0.1', port=5000)
