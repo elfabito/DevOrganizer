@@ -6,6 +6,7 @@ A tool to help developers organize and plan new projects with AI assistance
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, g, flash, make_response, current_app
 from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
 from flask_session import Session
+from werkzeug.middleware.proxy_fix import ProxyFix
 from datetime import datetime, timedelta, timezone
 import os
 import logging
@@ -40,8 +41,16 @@ def verify_csrf_token(token):
 # Initialize Flask app
 app = Flask(__name__)
 
+# Configure ProxyFix for Render (nginx reverse proxy)
+# This is critical for HTTPS detection behind a proxy
+# x_for=1: trust 1 proxy for X-Forwarded-For
+# x_proto=1: trust 1 proxy for X-Forwarded-Proto (HTTP vs HTTPS)
+# x_host=1: trust 1 proxy for X-Forwarded-Host
+# x_prefix=1: trust 1 proxy for X-Forwarded-Prefix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
 # Set secret key for session management
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or os.getenv('FLASK_SECRET_KEY') or 'dev-secret-key-change-in-production'
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
 
 
 # Small helpers used by a few routes
@@ -101,6 +110,12 @@ app.config['SESSION_COOKIE_SECURE'] = is_production  # Only send over HTTPS in p
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 app.config['SESSION_COOKIE_NAME'] = 'devorg_session'  # Custom name to avoid conflicts
+
+# Additional session configuration for production reliability
+app.config['SESSION_KEY_PREFIX'] = 'devorg:'  # Prefix for Redis keys to avoid collisions
+app.config['SESSION_USE_SIGNER'] = True  # Sign session cookies for extra security
+if is_production:
+    app.config['PREFERRED_URL_SCHEME'] = 'https'  # Force HTTPS URLs in production
 
 
 

@@ -76,7 +76,9 @@ def login_required(f=None):
             user_id = session.get('user_id') or session.get('_user_id')
 
             if not user_id:
-                current_app.logger.warning(f"[AUTH] No user_id in session for {request.path}")
+                # This is expected behavior for non-authenticated users
+                # Only log as debug to reduce noise in logs
+                current_app.logger.debug(f"[AUTH] Unauthenticated access to {request.path}")
 
                 # For API endpoints and AJAX requests, return JSON error
                 is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
