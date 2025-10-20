@@ -621,6 +621,50 @@
                         configuración...</span>
                 </div>
 
+                <!-- ClickUp Token Configuration Section -->
+                <div id="tokenConfigSection" style="margin-bottom: 24px;">
+                    <!-- Token Input Form (shown when no token) -->
+                    <div id="tokenInputForm" style="display: none;">
+                        <label for="clickupTokenInput"
+                            style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">
+                            ClickUp API Token:
+                        </label>
+                        <div style="display: flex; gap: 12px; margin-bottom: 8px;">
+                            <input type="password" id="clickupTokenInput"
+                                placeholder="Enter your ClickUp API token"
+                                onkeypress="if(event.key === 'Enter') saveClickUpToken()"
+                                style="flex: 1; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;">
+                            <button onclick="saveClickUpToken()" class="btn"
+                                style="background: white; color: #667eea; padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: transform 0.2s;"
+                                onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                🔗 Connect
+                            </button>
+                        </div>
+                        <small style="display: block; opacity: 0.9; line-height: 1.5;">
+                            💡 Get your API token from: <a href="https://app.clickup.com/settings/apps" target="_blank"
+                                style="color: white; text-decoration: underline; font-weight: 600;">ClickUp Settings → Apps</a>
+                        </small>
+                    </div>
+
+                    <!-- Token Status (shown when token exists) -->
+                    <div id="tokenConnectedStatus" style="display: none;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(255,255,255,0.15); border-radius: 8px; border: 2px solid rgba(255,255,255,0.3);">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span style="font-size: 24px;">✅</span>
+                                <div>
+                                    <div style="font-weight: 600; margin-bottom: 4px;">ClickUp Connected</div>
+                                    <div style="font-size: 13px; opacity: 0.8;">Your personal API token is configured</div>
+                                </div>
+                            </div>
+                            <button onclick="disconnectClickUp()" class="btn"
+                                style="background: rgba(239, 68, 68, 0.9); color: white; padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s;"
+                                onmouseover="this.style.background='rgba(220, 38, 38, 1)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'">
+                                🔌 Disconnect
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Workspace Selection -->
                 <div id="workspaceSection" style="display: none; margin-bottom: 20px;">
                     <label for="workspaceSelect"
@@ -1351,21 +1395,119 @@
     }
     }
 
-    // Auto-load workspaces if token is configured in .env
+    // Check if user has a ClickUp token configured
+    async function checkClickUpToken() {
+        try {
+            const response = await fetch('/api/user/clickup-token/check');
+            const data = await response.json();
+
+            if (data.has_token) {
+                // User has token - show connected status and load workspaces
+                document.getElementById('tokenInputForm').style.display = 'none';
+                document.getElementById('tokenConnectedStatus').style.display = 'block';
+                return true;
+            } else {
+                // No token - show input form
+                document.getElementById('tokenInputForm').style.display = 'block';
+                document.getElementById('tokenConnectedStatus').style.display = 'none';
+                return false;
+            }
+        } catch (error) {
+            console.error('Error checking token:', error);
+            showConfigStatus('❌', 'Error al verificar configuración: ' + error.message, true);
+            return false;
+        }
+    }
+
+    // Save ClickUp token for current user
+    async function saveClickUpToken() {
+        const tokenInput = document.getElementById('clickupTokenInput');
+        const token = tokenInput.value.trim();
+
+        if (!token) {
+            showConfigStatus('⚠️', 'Por favor ingresa un token válido', true);
+            return;
+        }
+
+        try {
+            showConfigStatus('🔄', 'Guardando token...');
+
+            const response = await fetch('/api/user/clickup-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ token: token })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || 'Failed to save token');
+            }
+
+            // Clear input and refresh UI
+            tokenInput.value = '';
+            showConfigStatus('✅', 'Token guardado exitosamente. Cargando workspaces...');
+
+            // Refresh token status and load workspaces
+            await checkClickUpToken();
+            await loadClickUpWorkspaces();
+
+        } catch (error) {
+            showConfigStatus('❌', 'Error al guardar token: ' + error.message, true);
+        }
+    }
+
+    // Disconnect ClickUp (delete token)
+    async function disconnectClickUp() {
+        if (!confirm('¿Estás seguro de que deseas desconectar ClickUp? Tendrás que volver a ingresar tu token.')) {
+            return;
+        }
+
+        try {
+            showConfigStatus('🔄', 'Desconectando...');
+
+            const response = await fetch('/api/user/clickup-token', {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || 'Failed to delete token');
+            }
+
+            // Hide all sections and show input form
+            document.getElementById('tokenInputForm').style.display = 'block';
+            document.getElementById('tokenConnectedStatus').style.display = 'none';
+            document.getElementById('workspaceSection').style.display = 'none';
+            document.getElementById('spaceSection').style.display = 'none';
+            document.getElementById('folderSection').style.display = 'none';
+            document.getElementById('listSection').style.display = 'none';
+            document.getElementById('createTasksSection').style.display = 'none';
+
+            showConfigStatus('✅', 'ClickUp desconectado exitosamente');
+
+        } catch (error) {
+            showConfigStatus('❌', 'Error al desconectar: ' + error.message, true);
+        }
+    }
+
+    // Auto-load workspaces if token is configured
     async function autoLoadClickUpWorkspaces() {
         try {
             showConfigStatus('🔄', 'Verificando configuración de ClickUp...');
 
-            // Check if token is configured in .env
-            const checkResponse = await fetch('/clickup/check-config');
-            const checkData = await checkResponse.json();
+            // Check if user has personal token
+            const hasToken = await checkClickUpToken();
 
-            if (checkData.configured) {
-                showConfigStatus('✅', 'Token encontrado en .env - Cargando workspaces...');
+            if (hasToken) {
+                showConfigStatus('✅', 'Token configurado - Cargando workspaces...');
                 // Auto-load workspaces
                 await loadClickUpWorkspaces();
             } else {
-                showConfigStatus('❌', 'Token no configurado. Agrega CLICKUP_API_TOKEN en el archivo .env y reinicia el servidor.', true);
+                showConfigStatus('ℹ️', 'Por favor ingresa tu token de ClickUp para comenzar');
             }
         } catch (error) {
             showConfigStatus('❌', 'Error al verificar configuración: ' + error.message, true);

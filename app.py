@@ -94,6 +94,14 @@ app.config['SESSION_REDIS'] = redis_client
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
+# Session cookie configuration for production (HTTPS)
+# In production, cookies must be secure. In development, allow non-secure.
+is_production = app.config['ENV'] == 'production'
+app.config['SESSION_COOKIE_SECURE'] = is_production  # Only send over HTTPS in production
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+app.config['SESSION_COOKIE_NAME'] = 'devorg_session'  # Custom name to avoid conflicts
+
 
 
 
