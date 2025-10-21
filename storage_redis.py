@@ -288,7 +288,12 @@ class RedisUserStorage:
             'updated_at': now,
             'is_active': True,
             'clickup_token': None,
+            'linear_token': None,
             'last_login': None,
+            # OAuth fields
+            'oauth_provider': None,  # 'google', 'github', None (for regular users)
+            'oauth_id': None,  # Unique ID from OAuth provider
+            'avatar_url': None,  # Profile picture URL from OAuth
             # Subscription fields
             'plan_type': plan_type,  # 'free' or 'pro'
             'stripe_customer_id': None,
@@ -415,6 +420,38 @@ class RedisUserStorage:
         self.r.set(self._user_key(user_id), json.dumps(user))
         return True
 
+    def save_user_linear_token(self, user_id: str, token: str) -> bool:
+        """Save Linear API token for a user"""
+        user = self.get_user_by_id(user_id)
+        if not user:
+            return False
+
+        user['linear_token'] = token
+        user['updated_at'] = datetime.now(timezone.utc).isoformat()
+
+        self.r.set(self._user_key(user_id), json.dumps(user))
+        return True
+
+    def get_user_linear_token(self, user_id: str) -> Optional[str]:
+        """Get Linear API token for a user"""
+        user = self.get_user_by_id(user_id)
+        if not user:
+            return None
+
+        return user.get('linear_token')
+
+    def delete_user_linear_token(self, user_id: str) -> bool:
+        """Delete Linear API token for a user"""
+        user = self.get_user_by_id(user_id)
+        if not user:
+            return False
+
+        user['linear_token'] = None
+        user['updated_at'] = datetime.now(timezone.utc).isoformat()
+
+        self.r.set(self._user_key(user_id), json.dumps(user))
+        return True
+
     # Subscription management methods
     def get_user_subscription(self, user_id: str) -> Optional[Dict]:
         """Get user's subscription information"""
@@ -473,3 +510,66 @@ class RedisUserStorage:
             'estimations': estimations_count,
             'feature_suggestions': suggestions_count
         }
+
+    def get_or_create_oauth_user(self, provider: str, oauth_id: str, email: str, name: str, avatar_url: str = None, plan_type: str = 'free') -> Dict:
+        """
+        Get existing OAuth user or create a new one
+
+        Args:
+            provider: OAuth provider name ('google', 'github', etc.)
+            oauth_id: Unique ID from OAuth provider
+            email: User's email from OAuth
+            name: User's name from OAuth
+            avatar_url: Profile picture URL (optional)
+            plan_type: Subscription plan (default: 'free')
+
+        Returns:
+            User dict with all user information
+        """
+        # Try to find existing user by email
+        existing_user = self.get_user_by_email(email)
+
+        if existing_user:
+            # Update OAuth info if not already set
+            if not existing_user.get('oauth_provider'):
+                existing_user['oauth_provider'] = provider
+                existing_user['oauth_id'] = oauth_id
+                existing_user['avatar_url'] = avatar_url
+                existing_user['updated_at'] = datetime.now(timezone.utc).isoformat()
+                self.r.set(self._user_key(existing_user['id']), json.dumps(existing_user))
+            return existing_user
+
+        # Create new OAuth user
+        user_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+
+        user_data = {
+            'id': user_id,
+            'email': email,
+            'name': name,
+            'password_hash': None,  # OAuth users don't have passwords
+            'created_at': now,
+            'updated_at': now,
+            'is_active': True,
+            'clickup_token': None,
+            'linear_token': None,
+            'last_login': now,
+            # OAuth fields
+            'oauth_provider': provider,
+            'oauth_id': oauth_id,
+            'avatar_url': avatar_url,
+            # Subscription fields
+            'plan_type': plan_type,
+            'stripe_customer_id': None,
+            'stripe_subscription_id': None,
+            'subscription_status': None,
+            'subscription_current_period_end': None,
+            'trial_end': None
+        }
+
+        # Store user data
+        self.r.set(self._user_key(user_id), json.dumps(user_data))
+        # Create email index
+        self.r.set(self._user_email_index(email), user_id)
+
+        return user_data

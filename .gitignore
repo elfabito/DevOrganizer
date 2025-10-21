@@ -52,3 +52,6 @@ database_backups/
 
 # Flask sessions
 .flask_session/
+
+delete_user.py
+.scripts/

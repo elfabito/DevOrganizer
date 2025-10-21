@@ -167,6 +167,299 @@
         opacity: 0.9;
     }
 
+    /* Review section styles */
+    .review-grid {
+        display: grid;
+        gap: 20px;
+    }
+
+    .review-category-card {
+        background: var(--white);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.3s;
+    }
+
+    .review-category-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .review-category-header {
+        cursor: pointer;
+        padding: 14px 18px;
+        background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+        border-bottom: 1px solid #bae6fd;
+        font-weight: 600;
+        font-size: 16px;
+        color: #0c4a6e;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s;
+    }
+
+    .review-category-header:hover {
+        background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+    }
+
+    .review-category-header:after {
+        content: '▼';
+        font-size: 12px;
+        transition: transform 0.3s ease;
+        color: #0369a1;
+    }
+
+    .review-category-header.collapsed:after {
+        transform: rotate(-90deg);
+    }
+
+    .review-category-content {
+        padding: 20px;
+    }
+
+    .review-summary {
+        padding: 14px 18px;
+        background: #f0f9ff;
+        border-left: 4px solid #3b82f6;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        color: #1e293b;
+        line-height: 1.7;
+        font-size: 14px;
+    }
+
+    .review-section {
+        margin-bottom: 18px;
+    }
+
+    .review-section-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .strengths-title {
+        color: #16a34a;
+    }
+
+    .concerns-title {
+        color: #f59e0b;
+    }
+
+    .recommendations-title {
+        color: #3b82f6;
+    }
+
+    .review-list {
+        list-style: none;
+        padding-left: 0;
+        margin: 0;
+    }
+
+    .review-list li {
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        display: flex;
+        align-items: start;
+        gap: 12px;
+        line-height: 1.6;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .strengths-list li {
+        background: #f0fdf4;
+        border-left: 3px solid #16a34a;
+        color: #166534;
+    }
+
+    .strengths-list li:hover {
+        background: #dcfce7;
+        transform: translateX(4px);
+    }
+
+    .strengths-list li::before {
+        content: "✓";
+        color: #16a34a;
+        font-weight: bold;
+        font-size: 18px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .concerns-list li {
+        background: #fffbeb;
+        border-left: 3px solid #f59e0b;
+        color: #92400e;
+    }
+
+    .concerns-list li:hover {
+        background: #fef3c7;
+        transform: translateX(4px);
+    }
+
+    .concerns-list li::before {
+        content: "⚠";
+        color: #f59e0b;
+        font-size: 18px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .recommendations-list li {
+        background: #eff6ff;
+        border-left: 3px solid #3b82f6;
+        color: #1e3a8a;
+    }
+
+    .recommendations-list li:hover {
+        background: #dbeafe;
+        transform: translateX(4px);
+    }
+
+    .recommendations-list li::before {
+        content: "→";
+        color: #3b82f6;
+        font-weight: bold;
+        font-size: 18px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .review-grid .no-data {
+        padding: 40px 20px;
+        text-align: center;
+        color: #6b7280;
+        font-style: italic;
+        background: #f9fafb;
+        border-radius: 8px;
+        border: 2px dashed #d1d5db;
+    }
+
+    /* Missing Information section styles */
+    .missing-info-container {
+        margin-bottom: 24px;
+    }
+
+    .missing-info-card {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        border: 2px solid #f59e0b;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+    }
+
+    .missing-info-header {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .missing-info-icon {
+        font-size: 24px;
+    }
+
+    .missing-info-header h4 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+    }
+
+    .missing-info-content {
+        padding: 20px;
+    }
+
+    .missing-info-summary {
+        background: white;
+        padding: 14px 18px;
+        border-left: 4px solid #f59e0b;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        color: #92400e;
+        line-height: 1.7;
+        font-size: 14px;
+    }
+
+    .missing-info-section {
+        margin-bottom: 18px;
+    }
+
+    .missing-section-title {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #92400e;
+    }
+
+    .missing-items-list,
+    .questions-list {
+        list-style: none;
+        padding-left: 0;
+        margin: 0;
+    }
+
+    .missing-items-list li,
+    .questions-list li {
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        display: flex;
+        align-items: start;
+        gap: 12px;
+        line-height: 1.6;
+        font-size: 14px;
+        background: white;
+        transition: all 0.2s;
+    }
+
+    .missing-items-list li {
+        border-left: 3px solid #dc2626;
+        color: #991b1b;
+    }
+
+    .missing-items-list li:hover {
+        background: #fef2f2;
+        transform: translateX(4px);
+    }
+
+    .missing-items-list li::before {
+        content: "✗";
+        color: #dc2626;
+        font-weight: bold;
+        font-size: 18px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .questions-list li {
+        border-left: 3px solid #2563eb;
+        color: #1e3a8a;
+    }
+
+    .questions-list li:hover {
+        background: #eff6ff;
+        transform: translateX(4px);
+    }
+
+    .questions-list li::before {
+        content: "?";
+        color: #2563eb;
+        font-weight: bold;
+        font-size: 18px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
 
     .questions-grid {
         display: grid;
@@ -532,13 +825,17 @@
 
 <div class="tabs-container">
     <div class="tabs-header">
-        <button class="tab-button active" onclick="switchTab('questions')">
+        <button class="tab-button active" onclick="switchTab('review')">
+            <span class="tab-icon">🔍</span>
+            Review
+        </button>
+        <button class="tab-button" onclick="switchTab('questions')">
             <span class="tab-icon">❓</span>
             Technical Questions
         </button>
         <button class="tab-button" onclick="switchTab('clickup')">
             <span class="tab-icon">📋</span>
-            ClickUp Task Plan
+            Task Plan
         </button>
         <button class="tab-button" onclick="switchTab('weekly')">
             <span class="tab-icon">📝</span>
@@ -550,8 +847,109 @@
         </button>
     </div>
 
-    <!-- Tab 1: Questions -->
-    <div id="questions-tab" class="tab-content active">
+    <!-- Tab 1: Review -->
+    <div id="review-tab" class="tab-content active">
+        <div class="section">
+            <h3>🔍 Project Review</h3>
+
+            <!-- Missing Information Section -->
+            {% if project.ai_data.missing_information %}
+            <div class="missing-info-container">
+                <div class="missing-info-card">
+                    <div class="missing-info-header">
+                        <span class="missing-info-icon">📋</span>
+                        <h4>Missing Information</h4>
+                    </div>
+                    <div class="missing-info-content">
+                        {% if project.ai_data.missing_information.summary %}
+                        <p class="missing-info-summary">{{ project.ai_data.missing_information.summary }}</p>
+                        {% endif %}
+
+                        {% if project.ai_data.missing_information.missing_items and
+                        project.ai_data.missing_information.missing_items|length > 0 %}
+                        <div class="missing-info-section">
+                            <h5 class="missing-section-title">🔴 Missing Items</h5>
+                            <ul class="missing-items-list">
+                                {% for item in project.ai_data.missing_information.missing_items %}
+                                <li>{{ item }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        {% if project.ai_data.missing_information.questions_for_client and
+                        project.ai_data.missing_information.questions_for_client|length > 0 %}
+                        <div class="missing-info-section">
+                            <h5 class="missing-section-title">❓ Questions for Client</h5>
+                            <ul class="questions-list">
+                                {% for question in project.ai_data.missing_information.questions_for_client %}
+                                <li>{{ question }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="review-grid">
+                {% if project.ai_data.review %}
+                {% for category in project.ai_data.review %}
+                <div class="review-category-card section-card">
+                    <div class="review-category-header section-header" data-section-id="review-{{ loop.index }}"
+                        onclick="StateManager.toggle(this, 'section')">
+                        <span>{{ category.category }}</span>
+                    </div>
+                    <div id="review-{{ loop.index }}" class="review-category-content collapsible-content">
+                        {% if category.summary %}
+                        <p class="review-summary">{{ category.summary }}</p>
+                        {% endif %}
+
+                        {% if category.strengths and category.strengths|length > 0 %}
+                        <div class="review-section">
+                            <h4 class="review-section-title strengths-title">✅ Strengths</h4>
+                            <ul class="review-list strengths-list">
+                                {% for strength in category.strengths %}
+                                <li>{{ strength }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        {% if category.concerns and category.concerns|length > 0 %}
+                        <div class="review-section">
+                            <h4 class="review-section-title concerns-title">⚠️ Concerns</h4>
+                            <ul class="review-list concerns-list">
+                                {% for concern in category.concerns %}
+                                <li>{{ concern }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        {% if category.recommendations and category.recommendations|length > 0 %}
+                        <div class="review-section">
+                            <h4 class="review-section-title recommendations-title">💡 Recommendations</h4>
+                            <ul class="review-list recommendations-list">
+                                {% for rec in category.recommendations %}
+                                <li>{{ rec }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="no-data">No review data available for this project.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 2: Questions -->
+    <div id="questions-tab" class="tab-content">
         <div class="section">
             <h3>❓ Key Technical Questions</h3>
             <div class="questions-grid">
@@ -580,7 +978,7 @@
     <!-- Tab 2: ClickUp Plan -->
     <div id="clickup-tab" class="tab-content">
         <div class="section">
-            <h3>📋 ClickUp Task Plan</h3>
+            <h3>📋 Task Plan</h3>
             <div class="task-plan-box">
                 {% if project.ai_data.clickup_plan is mapping and project.ai_data.clickup_plan.phases %}
                 {% for phase in project.ai_data.clickup_plan.phases %}
@@ -608,6 +1006,35 @@
                 {% endif %}
             </div>
 
+            <!-- Refine Tasks Section -->
+            {% if project.ai_data.clickup_plan is mapping and project.ai_data.clickup_plan.phases %}
+            <div class="adjustment-section" style="margin-top: 40px; background: var(--light-gray); padding: 24px; border-radius: 12px;">
+                <h3>🔧 Not sure with the tasks?</h3>
+                <p>If you'd like to adjust these tasks, please provide your feedback below and we'll refine them for you.</p>
+
+                <div class="form-group" style="margin: 16px 0;">
+                    <textarea
+                        id="tasksFeedback"
+                        class="form-control"
+                        rows="4"
+                        placeholder="Example: Phase 2 has too many tasks, simplify it. Also, add a Testing phase with QA tasks."
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px;"
+                    ></textarea>
+                </div>
+
+                <button
+                    id="refineTasksBtn"
+                    class="btn btn-primary"
+                    style="display: flex; align-items: center; gap: 8px;"
+                >
+                    <span id="refineBtnText">🔄 Refine Tasks</span>
+                    <span id="refineSpinner" class="spinner-border spinner-border-sm" role="status" style="display: none;"></span>
+                </button>
+
+                <div id="refineError" class="error-message" style="color: #dc3545; margin-top: 12px; display: none;"></div>
+            </div>
+            {% endif %}
+
             <!-- ClickUp Integration Section -->
             <div class="section"
                 style="margin-top: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px; border-radius: 16px; color: white;">
@@ -630,35 +1057,39 @@
                             ClickUp API Token:
                         </label>
                         <div style="display: flex; gap: 12px; margin-bottom: 8px;">
-                            <input type="password" id="clickupTokenInput"
-                                placeholder="Enter your ClickUp API token"
+                            <input type="password" id="clickupTokenInput" placeholder="Enter your ClickUp API token"
                                 onkeypress="if(event.key === 'Enter') saveClickUpToken()"
                                 style="flex: 1; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;">
                             <button onclick="saveClickUpToken()" class="btn"
                                 style="background: white; color: #667eea; padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: transform 0.2s;"
-                                onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                onmouseover="this.style.transform='scale(1.05)'"
+                                onmouseout="this.style.transform='scale(1)'">
                                 🔗 Connect
                             </button>
                         </div>
                         <small style="display: block; opacity: 0.9; line-height: 1.5;">
                             💡 Get your API token from: <a href="https://app.clickup.com/settings/apps" target="_blank"
-                                style="color: white; text-decoration: underline; font-weight: 600;">ClickUp Settings → Apps</a>
+                                style="color: white; text-decoration: underline; font-weight: 600;">ClickUp Settings →
+                                Apps</a>
                         </small>
                     </div>
 
                     <!-- Token Status (shown when token exists) -->
                     <div id="tokenConnectedStatus" style="display: none;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(255,255,255,0.15); border-radius: 8px; border: 2px solid rgba(255,255,255,0.3);">
+                        <div
+                            style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(255,255,255,0.15); border-radius: 8px; border: 2px solid rgba(255,255,255,0.3);">
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <span style="font-size: 24px;">✅</span>
                                 <div>
                                     <div style="font-weight: 600; margin-bottom: 4px;">ClickUp Connected</div>
-                                    <div style="font-size: 13px; opacity: 0.8;">Your personal API token is configured</div>
+                                    <div style="font-size: 13px; opacity: 0.8;">Your personal API token is configured
+                                    </div>
                                 </div>
                             </div>
                             <button onclick="disconnectClickUp()" class="btn"
                                 style="background: rgba(239, 68, 68, 0.9); color: white; padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s;"
-                                onmouseover="this.style.background='rgba(220, 38, 38, 1)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'">
+                                onmouseover="this.style.background='rgba(220, 38, 38, 1)'"
+                                onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'">
                                 🔌 Disconnect
                             </button>
                         </div>
@@ -728,6 +1159,86 @@
                 <div id="clickupStatus" style="margin-top: 16px; padding: 12px; border-radius: 8px; display: none;">
                 </div>
             </div>
+
+            <!-- Linear Integration Section -->
+            <div class="section"
+                style="margin-top: 32px; background: linear-gradient(135deg, #5E6AD2 0%, #4650C6 100%); padding: 32px; border-radius: 16px; color: white;">
+                <h3 style="color: white; margin-bottom: 8px;">🔷 Export to Linear</h3>
+                <p style="opacity: 0.9; margin-bottom: 24px;">Send these tasks directly to your Linear workspace</p>
+
+                <!-- Status/Info Message -->
+                <div id="linearConfigStatus"
+                    style="margin-bottom: 20px; padding: 12px 16px; background: rgba(255,255,255,0.1); border-radius: 8px; display: none;">
+                    <span id="linearConfigStatusIcon">🔄</span> <span id="linearConfigStatusText">Checking
+                        configuration...</span>
+                </div>
+
+                <!-- Token Configuration Section -->
+                <div id="linearTokenConfigSection" style="margin-bottom: 24px;">
+
+                    <!-- Token Input Form (shown when no token) -->
+                    <div id="linearTokenInputForm" style="display: none;">
+                        <label for="linearTokenInput"
+                            style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">Linear API
+                            Token:</label>
+                        <div style="display: flex; gap: 12px; margin-bottom: 8px;">
+                            <input type="password" id="linearTokenInput" placeholder="lin_api_..."
+                                style="flex: 1; padding: 10px; border: none; border-radius: 6px; font-size: 14px;">
+                            <button onclick="saveLinearToken()" class="btn btn-primary"
+                                style="white-space: nowrap;">Connect
+                                Linear</button>
+                        </div>
+                        <small style="opacity: 0.9;">
+                            Get your token: <a href="https://linear.app/settings/api" target="_blank"
+                                style="color: white; text-decoration: underline;">Linear Settings → API</a>
+                        </small>
+                    </div>
+
+                    <!-- Token Connected Status (shown when token exists) -->
+                    <div id="linearTokenConnected" style="display: none;">
+                        <div
+                            style="padding: 12px; background: rgba(255,255,255,0.1); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>✅ Linear Connected</span>
+                            <button onclick="disconnectLinear()" class="btn btn-secondary"
+                                style="font-size: 12px;">Disconnect</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Team Selection -->
+                <div id="linearTeamSection" style="margin-bottom: 20px; display: none;">
+                    <label for="linearTeamSelect"
+                        style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">Select
+                        Team:</label>
+                    <select id="linearTeamSelect" onchange="loadLinearProjects()"
+                        style="width: 100%; padding: 10px; border: none; border-radius: 6px; font-size: 14px;">
+                        <option value="">-- Select a team --</option>
+                    </select>
+                </div>
+
+                <!-- Project Selection -->
+                <div id="linearProjectSection" style="margin-bottom: 20px; display: none;">
+                    <label for="linearProjectSelect"
+                        style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">Select Project
+                        (Optional):</label>
+                    <select id="linearProjectSelect"
+                        style="width: 100%; padding: 10px; border: none; border-radius: 6px; font-size: 14px;">
+                        <option value="">-- No project (create in team only) --</option>
+                    </select>
+                    <small style="opacity: 0.8; display: block; margin-top: 6px;">Leave blank to create issues without a
+                        project</small>
+                </div>
+
+                <!-- Create Issues Button -->
+                <div id="linearCreateSection" style="display: none;">
+                    <button onclick="createLinearIssues()" class="btn btn-success"
+                        style="width: 100%; padding: 14px; font-size: 16px; font-weight: 600;">
+                        🔷 Create Issues in Linear
+                    </button>
+                    <p id="linearTaskCount"
+                        style="margin-top: 12px; text-align: center; opacity: 0.9; font-size: 14px;"></p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -748,8 +1259,10 @@
                         <div style="padding: 16px;">
                             <div
                                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <strong style="color: var(--dark);">Week of {{ summary.created_at[:10] if summary.created_at else 'N/A' }}</strong>
-                                <span style="font-size: 12px; color: var(--gray);">{{ summary.created_at[:10] if summary.created_at else 'N/A' }}</span>
+                                <strong style="color: var(--dark);">Week of {{ summary.created_at[:10] if
+                                    summary.created_at else 'N/A' }}</strong>
+                                <span style="font-size: 12px; color: var(--gray);">{{ summary.created_at[:10] if
+                                    summary.created_at else 'N/A' }}</span>
                             </div>
                             <div style="color: var(--gray); font-size: 14px; line-height: 1.6;">
                                 {% if summary.ai_summary %}
@@ -1081,7 +1594,100 @@
         }
     }
 
+    // ============================================================================
+    // REFINE TASKS FUNCTION
+    // ============================================================================
+
+    async function refineTasks() {
+        const refineBtn = document.getElementById('refineTasksBtn');
+        const refineBtnText = document.getElementById('refineBtnText');
+        const refineSpinner = document.getElementById('refineSpinner');
+        const feedbackTextarea = document.getElementById('tasksFeedback');
+        const errorDiv = document.getElementById('refineError');
+        const projectId = '{{ project.id }}';
+
+        const feedback = feedbackTextarea.value.trim();
+
+        // Validate feedback
+        if (!feedback) {
+            errorDiv.textContent = 'Please provide some feedback to refine the tasks.';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        // Hide error
+        errorDiv.style.display = 'none';
+
+        // Show loading state
+        refineBtn.disabled = true;
+        refineBtnText.textContent = 'Refining...';
+        refineSpinner.style.display = 'inline-block';
+
+        try {
+            // Get CSRF token
+            const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || '';
+
+            // Call the API to refine the tasks
+            const response = await fetch(`/refine-project-tasks/${projectId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    feedback: feedback
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to refine tasks');
+            }
+
+            if (data.success) {
+                // Show success message
+                errorDiv.style.color = '#10b981';
+                errorDiv.textContent = '✅ Tasks refined successfully! Reloading page...';
+                errorDiv.style.display = 'block';
+
+                // Clear feedback
+                feedbackTextarea.value = '';
+
+                // Reload page after 2 seconds to show updated tasks
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                throw new Error(data.error || 'Failed to refine tasks');
+            }
+
+        } catch (error) {
+            console.error('Error refining tasks:', error);
+            errorDiv.style.color = '#dc3545';
+            errorDiv.textContent = `Error: ${error.message}`;
+            errorDiv.style.display = 'block';
+
+            // Reset button
+            refineBtn.disabled = false;
+            refineBtnText.textContent = '🔄 Refine Tasks';
+            refineSpinner.style.display = 'none';
+        }
+    }
+
+    // Add event listener to refine button
+    document.addEventListener('DOMContentLoaded', function() {
+        const refineBtn = document.getElementById('refineTasksBtn');
+        if (refineBtn) {
+            refineBtn.addEventListener('click', refineTasks);
+        }
+    });
+
+    // ============================================================================
     // ClickUp Integration Functions
+    // ============================================================================
+
     function showStatus(message, isError = false) {
         const statusDiv = document.getElementById('clickupStatus');
         statusDiv.style.display = 'block';
@@ -1513,6 +2119,331 @@
             showConfigStatus('❌', 'Error al verificar configuración: ' + error.message, true);
         }
     }
+
+    // ============================================================================
+    // LINEAR INTEGRATION FUNCTIONS
+    // ============================================================================
+
+    // Helper function to show Linear status messages
+    function showLinearStatus(message, isError = false) {
+        const statusDiv = document.getElementById('linearConfigStatus');
+        const iconSpan = document.getElementById('linearConfigStatusIcon');
+        const textSpan = document.getElementById('linearConfigStatusText');
+
+        statusDiv.style.display = 'block';
+        textSpan.textContent = message;
+
+        if (isError) {
+            statusDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+            iconSpan.textContent = '❌';
+        } else {
+            statusDiv.style.background = 'rgba(255, 255, 255, 0.1)';
+            iconSpan.textContent = '✅';
+        }
+
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            statusDiv.style.display = 'none';
+        }, 5000);
+    }
+
+    // Helper function to get CSRF token
+    function getCsrfToken() {
+        const tokenInput = document.querySelector('input[name="csrf_token"]');
+        if (tokenInput) {
+            return tokenInput.value;
+        }
+        // Fallback: try to get from meta tag
+        const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+        if (tokenMeta) {
+            return tokenMeta.content;
+        }
+        return '';
+    }
+
+    // Check if Linear token is configured
+    async function checkLinearToken() {
+        try {
+            const response = await fetch('/api/user/linear-token/check', {
+                method: 'GET',
+                credentials: 'same-origin'
+            });
+
+            const data = await response.json();
+
+            if (data.configured) {
+                document.getElementById('linearTokenInputForm').style.display = 'none';
+                document.getElementById('linearTokenConnected').style.display = 'block';
+                await loadLinearTeams();
+            } else {
+                document.getElementById('linearTokenInputForm').style.display = 'block';
+                document.getElementById('linearTokenConnected').style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error checking Linear token:', error);
+            showLinearStatus('Error checking Linear configuration', true);
+        }
+    }
+
+    // Save Linear API token
+    async function saveLinearToken() {
+        const tokenInput = document.getElementById('linearTokenInput');
+        const token = tokenInput.value.trim();
+
+        if (!token) {
+            showLinearStatus('Please enter a Linear API token', true);
+            return;
+        }
+
+        if (!token.startsWith('lin_api_')) {
+            showLinearStatus('Invalid token format. Linear tokens start with "lin_api_"', true);
+            return;
+        }
+
+        showLinearStatus('Validating token...', false);
+
+        try {
+            const response = await fetch('/api/user/linear-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ token: token })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                showLinearStatus('✅ Linear connected successfully!', false);
+                tokenInput.value = '';
+                await checkLinearToken();
+            } else {
+                showLinearStatus(data.error || 'Failed to save Linear token', true);
+            }
+        } catch (error) {
+            console.error('Error saving Linear token:', error);
+            showLinearStatus('Error connecting to Linear: ' + error.message, true);
+        }
+    }
+
+    // Disconnect Linear
+    async function disconnectLinear() {
+        if (!confirm('Are you sure you want to disconnect Linear? You will need to re-enter your API token to use Linear integration again.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/user/linear-token', {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                },
+                credentials: 'same-origin'
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                showLinearStatus('Linear disconnected', false);
+
+                // Reset UI
+                document.getElementById('linearTokenConnected').style.display = 'none';
+                document.getElementById('linearTeamSection').style.display = 'none';
+                document.getElementById('linearProjectSection').style.display = 'none';
+                document.getElementById('linearCreateSection').style.display = 'none';
+
+                await checkLinearToken();
+            } else {
+                showLinearStatus(data.error || 'Failed to disconnect Linear', true);
+            }
+        } catch (error) {
+            console.error('Error disconnecting Linear:', error);
+            showLinearStatus('Error disconnecting Linear: ' + error.message, true);
+        }
+    }
+
+    // Load Linear teams
+    async function loadLinearTeams() {
+        try {
+            showLinearStatus('Loading teams...', false);
+
+            const response = await fetch('/linear/teams', {
+                method: 'GET',
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load teams');
+            }
+
+            const data = await response.json();
+            const teams = data.teams || [];
+
+            const teamSelect = document.getElementById('linearTeamSelect');
+            teamSelect.innerHTML = '<option value="">-- Select a team --</option>';
+
+            teams.forEach(team => {
+                const option = document.createElement('option');
+                option.value = team.id;
+                option.textContent = team.name;
+                teamSelect.appendChild(option);
+            });
+
+            document.getElementById('linearTeamSection').style.display = 'block';
+            showLinearStatus(`Loaded ${teams.length} teams`, false);
+
+        } catch (error) {
+            console.error('Error loading Linear teams:', error);
+            showLinearStatus('Error loading teams: ' + error.message, true);
+        }
+    }
+
+    // Load Linear projects for selected team
+    async function loadLinearProjects() {
+        const teamSelect = document.getElementById('linearTeamSelect');
+        const teamId = teamSelect.value;
+
+        if (!teamId) {
+            document.getElementById('linearProjectSection').style.display = 'none';
+            document.getElementById('linearCreateSection').style.display = 'none';
+            return;
+        }
+
+        try {
+            showLinearStatus('Loading projects...', false);
+
+            const response = await fetch(`/linear/projects/${teamId}`, {
+                method: 'GET',
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load projects');
+            }
+
+            const data = await response.json();
+            const projects = data.projects || [];
+
+            const projectSelect = document.getElementById('linearProjectSelect');
+            projectSelect.innerHTML = '<option value="">-- No project (create in team only) --</option>';
+
+            projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = project.name;
+                projectSelect.appendChild(option);
+            });
+
+            document.getElementById('linearProjectSection').style.display = 'block';
+            document.getElementById('linearCreateSection').style.display = 'block';
+
+            // Update task count
+            const phasesData = {{ project.ai_data.clickup_plan.phases | tojson | safe
+    }};
+            const taskCountLinear = phasesData.reduce((sum, phase) => sum + phase.tasks.length, 0);
+            document.getElementById('linearTaskCount').textContent = `Ready to create ${taskCountLinear} issues`;
+
+            showLinearStatus(`Loaded ${projects.length} projects`, false);
+
+        } catch (error) {
+            console.error('Error loading Linear projects:', error);
+            showLinearStatus('Error loading projects: ' + error.message, true);
+        }
+    }
+
+    // Create issues in Linear
+    async function createLinearIssues() {
+        const teamId = document.getElementById('linearTeamSelect').value;
+        const projectId = document.getElementById('linearProjectSelect').value || null;
+
+        if (!teamId) {
+            showLinearStatus('Please select a team', true);
+            return;
+        }
+
+        const phasesForLinear = {{ project.ai_data.clickup_plan.phases | tojson | safe
+    }};
+
+        if (!phasesForLinear || phasesForLinear.length === 0) {
+            showLinearStatus('No tasks to create', true);
+            return;
+        }
+
+        const taskCountForLinear = phasesForLinear.reduce((sum, phase) => sum + phase.tasks.length, 0);
+
+        if (!confirm(`Create ${taskCountForLinear} issues in Linear?`)) {
+            return;
+        }
+
+        showLinearStatus('Creating issues in Linear...', false);
+
+        // Disable button during creation
+        const createButton = event.target;
+        const originalText = createButton.innerHTML;
+        createButton.disabled = true;
+        createButton.innerHTML = '⏳ Creating issues...';
+
+        try {
+            const response = await fetch('/linear/create-issues', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    team_id: teamId,
+                    project_id: projectId,
+                    phases: phasesForLinear
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                showLinearStatus(`✅ Successfully created ${data.created_count} issues in Linear!`, false);
+
+                // Show created issues
+                if (data.created_issues && data.created_issues.length > 0) {
+                    let issueList = '<div style="margin-top: 20px; background: rgba(255,255,255,0.1); padding: 16px; border-radius: 8px;"><strong>Created Issues:</strong><ul style="margin-top: 10px;">';
+                    data.created_issues.slice(0, 5).forEach(issue => {
+                        issueList += `<li><a href="${issue.url}" target="_blank" style="color: white;">${issue.identifier}: ${issue.title}</a></li>`;
+                    });
+                    if (data.created_issues.length > 5) {
+                        issueList += `<li>... and ${data.created_issues.length - 5} more</li>`;
+                    }
+                    issueList += '</ul></div>';
+
+                    document.getElementById('linearConfigStatus').innerHTML += issueList;
+                }
+
+                // Show failed issues if any
+                if (data.failed_count > 0) {
+                    showLinearStatus(`⚠️ ${data.failed_count} issues failed to create`, true);
+                }
+            } else {
+                showLinearStatus(data.error || 'Failed to create issues in Linear', true);
+            }
+        } catch (error) {
+            console.error('Error creating Linear issues:', error);
+            showLinearStatus('Error creating issues: ' + error.message, true);
+        } finally {
+            // Re-enable button
+            createButton.disabled = false;
+            createButton.innerHTML = originalText;
+        }
+    }
+
+    // Auto-load Linear teams on page load
+    async function autoLoadLinearTeams() {
+        await checkLinearToken();
+    }
+
+    // ============================================================================
+    // END OF LINEAR INTEGRATION FUNCTIONS
+    // ============================================================================
 
     // Unified state management for all collapsible sections
     const StateManager = {
@@ -2126,6 +3057,9 @@
         // Initialize ClickUp integration if needed
         autoLoadClickUpWorkspaces();
 
+        // Initialize Linear integration if needed
+        autoLoadLinearTeams();
+
         // Set up category toggles for technical questions
         document.querySelectorAll('.category-header').forEach(header => {
             header.style.cursor = 'pointer';
@@ -2226,6 +3160,30 @@
                 e.preventDefault();
                 e.stopPropagation();
                 togglePhase(header);
+            });
+        });
+
+        // Set up review section toggles
+        document.querySelectorAll('.review-category-header').forEach(header => {
+            const sectionId = header.getAttribute('data-section-id');
+            const content = header.nextElementSibling;
+
+            if (!sectionId || !content) return;
+
+            // Load initial state (default to expanded for review sections)
+            StateManager.loadState(sectionId, 'section').then(isExpanded => {
+                // Default to expanded if no state saved
+                const shouldExpand = isExpanded !== false;
+
+                if (shouldExpand) {
+                    content.style.display = 'block';
+                    header.classList.add('expanded');
+                    header.classList.remove('collapsed');
+                } else {
+                    content.style.display = 'none';
+                    header.classList.remove('expanded');
+                    header.classList.add('collapsed');
+                }
             });
         });
 

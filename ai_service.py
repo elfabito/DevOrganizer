@@ -21,14 +21,16 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 def generate_plan(project_name: str, project_description: str) -> Dict:
     """
-    Generate AI-based project plan with technical questions and task breakdown using Groq
-    
+    Generate AI-based project plan with review analysis, technical questions and task breakdown using Groq
+
     Args:
         project_name: Name of the project
         project_description: Detailed description of the project
-        
+
     Returns:
         Dictionary containing AI-generated data:
+        - missing_information: Critical gaps, missing items, and questions for the client
+        - review: Dynamic category-based project analysis with strengths, concerns, recommendations
         - questions: Categorized technical questions
         - clickup_plan: Formatted task plan
         - tech_stack_summary: Suggested technology stack
@@ -45,6 +47,20 @@ Project Description: {project_description}
 Please provide a comprehensive analysis in the following JSON format:
 
 {{
+  "missing_information": {{
+    "summary": "2-3 sentence overview of what critical information is missing from the project description and why it matters before starting development",
+    "missing_items": ["Missing credential/access 1", "Missing technical detail 1", "Missing requirement 1"],
+    "questions_for_client": ["Specific question 1", "Specific question 2", "Specific question 3", "Specific question 4"]
+  }},
+  "review": [
+    {{
+      "category": "Category Name",
+      "summary": "2-3 sentence overall assessment of this aspect",
+      "strengths": ["Strength 1", "Strength 2", "Strength 3"],
+      "concerns": ["Concern 1", "Concern 2"],
+      "recommendations": ["Recommendation 1", "Recommendation 2", "Recommendation 3"]
+    }}
+  ],
   "questions": {{
     "Authentication & Authorization": ["question 1", "question 2", ...],
     "Database & Storage": ["question 1", "question 2", ...],
@@ -69,13 +85,24 @@ Please provide a comprehensive analysis in the following JSON format:
 }}
 
 Guidelines:
-1. Generate 3-5 relevant technical questions per category based on the project description
-2. Recommend a modern, appropriate tech stack
-3. Create 4-6 key milestones that represent major project phases
-4. Create a ClickUp plan with 4-6 phases, each with 3-5 tasks
-5. Use emojis for phase names (🚀, 📋, 🎨, 🔒, 🚢, 📊, etc.)
-6. Set task priorities: "high", "medium", or "low"
-7. Make questions and tasks specific and actionable for this particular project
+1. MISSING INFORMATION: Identify critical gaps in the project description
+   - Analyze what access/credentials are needed: database credentials, API keys, cloud accounts, third-party service access
+   - Identify missing technical specifications: versions, deployment targets, infrastructure details
+   - Identify unclear requirements: ambiguous features, missing business logic, undefined specifications
+   - Generate 3-8 specific, actionable questions to ask the client
+   - Focus on practical items needed before development can start
+   - If everything seems complete, still provide the section with a note like "No critical information missing, but consider asking about..."
+2. REVIEW: Analyze the project and determine 4-6 most relevant review categories based on project type
+   - Choose categories dynamically (e.g., Architecture, Scalability, Security, Performance, Database Design, API Design, Testing Strategy, DevOps, User Experience, Code Quality, Maintainability, etc.)
+   - For each category provide: summary (2-3 sentences), 2-4 strengths, 1-3 concerns/risks, 2-4 actionable recommendations
+   - Make the review specific to THIS project - reference the actual project name and requirements
+3. Generate 3-5 relevant technical questions per category based on the project description
+4. Recommend a modern, appropriate tech stack
+5. Create 4-6 key milestones that represent major project phases
+6. Create a ClickUp plan with 4-6 phases, each with 3-5 tasks
+7. Use emojis for phase names (🚀, 📋, 🎨, 🔒, 🚢, 📊, etc.)
+8. Set task priorities: "high", "medium", or "low"
+9. Make questions and tasks specific and actionable for this particular project
 
 Return ONLY the JSON object, no additional text or markdown formatting."""
 
@@ -481,6 +508,119 @@ Return ONLY the JSON object, no additional text or markdown formatting."""
         raise ValueError(f"Failed to parse AI response: {str(e)}")
     except Exception as e:
         raise Exception(f"Failed to refine estimation: {str(e)}")
+
+
+def generate_plan_refinement(project_name: str, project_brief: str, current_plan: Dict, feedback: str) -> Dict:
+    """
+    Refine an existing project plan based on user feedback using Groq
+
+    Args:
+        project_name: Name of the project
+        project_brief: Original project brief/description
+        current_plan: The current clickup_plan to refine (contains phases with tasks)
+        feedback: User's feedback or requested adjustments
+
+    Returns:
+        Refined plan with updated phases and tasks
+    """
+    try:
+        # Create the prompt for Groq
+        prompt = f"""You are a senior software project planner. You need to refine an existing project task plan
+based on the user's feedback. Here's the current plan and the user's feedback:
+
+PROJECT: {project_name}
+DESCRIPTION: {project_brief}
+
+CURRENT TASK PLAN:
+{json.dumps(current_plan, indent=2)}
+
+USER FEEDBACK:
+{feedback}
+
+Please provide a refined task plan based on this feedback. Consider:
+1. Adjusting phases if the user mentioned specific phases need changes
+2. Adding/removing/modifying tasks within phases as requested
+3. Changing task priorities (High, Medium, Low) if suggested
+4. Adding new phases if the user suggested additional work areas
+5. Removing or simplifying tasks if the user mentioned too many tasks
+
+Return the response in the following JSON format:
+{{
+    "phases": [
+        {{
+            "name": "Phase 1: Setup & Configuration",
+            "tasks": [
+                {{"text": "Task description here", "priority": "High"}},
+                {{"text": "Another task description", "priority": "Medium"}},
+                {{"text": "Third task description", "priority": "Low"}}
+            ]
+        }},
+        {{
+            "name": "Phase 2: Development",
+            "tasks": [
+                {{"text": "Development task 1", "priority": "High"}},
+                {{"text": "Development task 2", "priority": "Medium"}}
+            ]
+        }}
+    ]
+}}
+
+IMPORTANT:
+- Each task must have "text" and "priority" fields
+- Priority must be one of: "High", "Medium", or "Low"
+- Phase names should be descriptive and start with "Phase N:"
+- Return ONLY the JSON object, no additional text or markdown formatting."""
+
+        # Call Groq API
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful project planning assistant that refines existing task plans based on user feedback. You always respond with valid JSON only."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7,
+            max_tokens=2000
+        )
+
+        # Extract response
+        response_text = response.choices[0].message.content.strip()
+
+        # Clean up response (remove markdown code blocks if present)
+        if response_text.startswith('```'):
+            # Remove ```json or ``` from start
+            response_text = response_text.split('\n', 1)[1] if '\n' in response_text else response_text[3:]
+            # Remove ``` from end
+            if response_text.endswith('```'):
+                response_text = response_text[:-3]
+            response_text = response_text.strip()
+
+        # Parse JSON response
+        refined_plan = json.loads(response_text)
+
+        # Validate response structure
+        if 'phases' not in refined_plan:
+            raise ValueError("Invalid response format from AI: Missing 'phases' field")
+
+        # Ensure all phases have required structure
+        for phase in refined_plan['phases']:
+            if 'name' not in phase or 'tasks' not in phase:
+                raise ValueError("Invalid phase structure: Missing 'name' or 'tasks'")
+            for task in phase['tasks']:
+                if 'text' not in task or 'priority' not in task:
+                    raise ValueError("Invalid task structure: Missing 'text' or 'priority'")
+
+        return refined_plan
+
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Failed to parse AI response: {str(e)}")
+    except Exception as e:
+        raise Exception(f"Failed to refine task plan: {str(e)}")
 
 
 def generate_feature_suggestions(project_name: str, audit_text: str) -> List[Dict]:

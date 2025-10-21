@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,7 +34,7 @@
         /* Navbar */
         .navbar {
             background: var(--white);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             padding: 16px 0;
             position: sticky;
             top: 0;
@@ -183,7 +184,7 @@
 
         .feature-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
         }
 
         .feature-icon {
@@ -224,14 +225,14 @@
             background: var(--white);
             padding: 40px;
             border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             position: relative;
             transition: transform 0.2s;
         }
 
         .pricing-card:hover {
             transform: scale(1.02);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         }
 
         .pricing-card.featured {
@@ -335,6 +336,7 @@
         }
     </style>
 </head>
+
 <body>
     <!-- Navbar -->
     <nav class="navbar">
@@ -345,11 +347,11 @@
             </a>
             <div class="nav-buttons">
                 {% if current_user %}
-                    <a href="{{ url_for('index') }}" class="btn btn-outline">Go to Dashboard</a>
-                    <a href="{{ url_for('create_stripe_checkout') }}" class="btn btn-primary">Upgrade to Pro</a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline">Go to Dashboard</a>
+                <a href="{{ url_for('create_stripe_checkout') }}" class="btn btn-primary">Upgrade to Pro</a>
                 {% else %}
-                    <a href="{{ url_for('web_login') }}" class="btn btn-outline">Log in</a>
-                    <a href="{{ url_for('web_signup') }}" class="btn btn-primary">Sign up</a>
+                <a href="{{ url_for('web_login') }}" class="btn btn-outline">Log in</a>
+                <a href="{{ url_for('web_signup') }}" class="btn btn-primary">Sign up</a>
                 {% endif %}
             </div>
         </div>
@@ -375,13 +377,15 @@
                 <div class="feature-card">
                     <div class="feature-icon">✨</div>
                     <h3>AI Project Planning</h3>
-                    <p>Generate comprehensive project plans with tech stack recommendations, milestones, and technical questions</p>
+                    <p>Generate comprehensive project plans with tech stack recommendations, milestones, and technical
+                        questions</p>
                 </div>
 
                 <div class="feature-card">
                     <div class="feature-icon">⏱️</div>
                     <h3>Time Estimations</h3>
-                    <p>Get accurate time estimates broken down by phases and tasks. Refine estimates based on your feedback</p>
+                    <p>Get accurate time estimates broken down by phases and tasks. Refine estimates based on your
+                        feedback</p>
                 </div>
 
                 <div class="feature-card">
@@ -398,8 +402,8 @@
 
                 <div class="feature-card">
                     <div class="feature-icon">📋</div>
-                    <h3>ClickUp Integration</h3>
-                    <p>Export your AI-generated tasks directly to ClickUp with one click (Pro plan only)</p>
+                    <h3>ClickUp / Linear Integration</h3>
+                    <p>Export your AI-generated tasks directly to ClickUp or Linear with one click (Pro plan only)</p>
                 </div>
 
                 <div class="feature-card">
@@ -449,6 +453,10 @@
                             <span class="feature-cross">❌</span>
                             <span>ClickUp Integration</span>
                         </li>
+                        <li>
+                            <span class="feature-cross">❌</span>
+                            <span>Linear Integration</span>
+                        </li>
                     </ul>
 
                     <a href="{{ url_for('web_signup') }}" class="btn btn-outline" style="width: 100%;">Start Free</a>
@@ -486,9 +494,14 @@
                             <span class="feature-check">✅</span>
                             <span>ClickUp Integration</span>
                         </li>
+                        <li>
+                            <span class="feature-check">✅</span>
+                            <span>Linear Integration</span>
+                        </li>
                     </ul>
 
-                    <a href="{{ url_for('web_signup') }}?plan=pro" class="btn btn-success" style="width: 100%;">Try Pro Free for 30 Days</a>
+                    <a href="{{ url_for('web_signup') }}?plan=pro" class="btn btn-success" style="width: 100%;">Try Pro
+                        Free for 30 Days</a>
                 </div>
             </div>
         </div>
@@ -502,4 +515,5 @@
         </div>
     </footer>
 </body>
+
 </html>

@@ -29,7 +29,8 @@ from subscription_limits import (
     get_user_plan_limits,
     can_use_clickup
 )
-
+from linear_service import LinearService, validate_linear_token
+from oauth_service import init_oauth, get_google_user_info, get_github_user_info
 
 from dotenv import load_dotenv
 load_dotenv('.env') 
@@ -147,7 +148,49 @@ Session(app)
 csrf = CSRFProtect()
 csrf.init_app(app)
 
-# No before_request needed - Flask-Session handles everything
+# Initialize OAuth
+oauth = init_oauth(app)
+
+# Refresh user data on each request to ensure plan changes are reflected
+@app.before_request
+def refresh_user_data():
+    """
+    Refresh user data from Redis on each request to ensure changes
+    (like plan updates) are reflected immediately without requiring logout/login.
+    """
+    from flask import session, request
+
+    # Skip for static files, OPTIONS requests, and public endpoints
+    if request.endpoint in ('static', 'web_login', 'web_signup', 'api_login', 'api_signup', 'landing'):
+        return
+
+    if request.method == 'OPTIONS':
+        return
+
+    # Get user_id from session
+    user_id = session.get('user_id') or session.get('_user_id')
+
+    if user_id:
+        try:
+            # Fetch fresh user data from Redis
+            fresh_user = user_storage.get_user_by_id(str(user_id))
+
+            if fresh_user:
+                # Update session with fresh data
+                # This ensures plan_type and other fields are always current
+                session['user'] = fresh_user
+                session.modified = True
+
+                # Store in g for easy access within request
+                g.user = fresh_user
+                g.user_id = user_id
+            else:
+                # User not found in database - clear session
+                current_app.logger.warning(f"User {user_id} not found in database during refresh, clearing session")
+                session.clear()
+        except Exception as e:
+            # Log error but don't break the request
+            current_app.logger.error(f"Error refreshing user data: {str(e)}")
 
 @app.after_request
 def after_request(response):
@@ -559,6 +602,128 @@ def clear_session():
     return redirect(url_for('web_login'))
 
 
+# ============================================================================
+# OAuth Routes (Google, GitHub, etc.)
+# ============================================================================
+
+@app.route('/auth/google')
+def oauth_google():
+    """Initiate Google OAuth login"""
+    try:
+        redirect_uri = url_for('oauth_google_callback', _external=True)
+        return oauth.google.authorize_redirect(redirect_uri)
+    except Exception as e:
+        current_app.logger.error(f"Error initiating Google OAuth: {str(e)}")
+        flash('Google login is not configured. Please use regular login.', 'error')
+        return redirect(url_for('web_login'))
+
+
+@app.route('/auth/google/callback')
+def oauth_google_callback():
+    """Handle Google OAuth callback"""
+    try:
+        # Get OAuth token
+        token = oauth.google.authorize_access_token()
+
+        # Get user info from Google
+        user_info = get_google_user_info(token)
+
+        if not user_info.get('email'):
+            flash('Could not retrieve email from Google. Please try again.', 'error')
+            return redirect(url_for('web_login'))
+
+        # Create or get user
+        user = user_storage.get_or_create_oauth_user(
+            provider='google',
+            oauth_id=user_info['oauth_id'],
+            email=user_info['email'],
+            name=user_info['name'],
+            avatar_url=user_info.get('avatar_url')
+        )
+
+        # Create session
+        session['user_id'] = user['id']
+        session['user'] = user
+        session['user_email'] = user['email']
+        session['user_name'] = user['name']
+        session.permanent = True
+
+        # Update last login
+        user_storage.update_last_login(user['id'])
+
+        current_app.logger.info(f"User {user['email']} logged in via Google OAuth")
+
+        # Redirect to next page or dashboard
+        next_page = session.pop('next', None)
+        return redirect(next_page or url_for('index'))
+
+    except Exception as e:
+        current_app.logger.error(f"Error in Google OAuth callback: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash('An error occurred during Google login. Please try again.', 'error')
+        return redirect(url_for('web_login'))
+
+
+@app.route('/auth/github')
+def oauth_github():
+    """Initiate GitHub OAuth login"""
+    try:
+        redirect_uri = url_for('oauth_github_callback', _external=True)
+        return oauth.github.authorize_redirect(redirect_uri)
+    except Exception as e:
+        current_app.logger.error(f"Error initiating GitHub OAuth: {str(e)}")
+        flash('GitHub login is not configured. Please use regular login.', 'error')
+        return redirect(url_for('web_login'))
+
+
+@app.route('/auth/github/callback')
+def oauth_github_callback():
+    """Handle GitHub OAuth callback"""
+    try:
+        # Get OAuth token
+        token = oauth.github.authorize_access_token()
+
+        # Get user info from GitHub
+        user_info = get_github_user_info(token)
+
+        if not user_info.get('email'):
+            flash('Could not retrieve email from GitHub. Please make sure your email is public or try another login method.', 'error')
+            return redirect(url_for('web_login'))
+
+        # Create or get user
+        user = user_storage.get_or_create_oauth_user(
+            provider='github',
+            oauth_id=user_info['oauth_id'],
+            email=user_info['email'],
+            name=user_info['name'],
+            avatar_url=user_info.get('avatar_url')
+        )
+
+        # Create session
+        session['user_id'] = user['id']
+        session['user'] = user
+        session['user_email'] = user['email']
+        session['user_name'] = user['name']
+        session.permanent = True
+
+        # Update last login
+        user_storage.update_last_login(user['id'])
+
+        current_app.logger.info(f"User {user['email']} logged in via GitHub OAuth")
+
+        # Redirect to next page or dashboard
+        next_page = session.pop('next', None)
+        return redirect(next_page or url_for('index'))
+
+    except Exception as e:
+        current_app.logger.error(f"Error in GitHub OAuth callback: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash('An error occurred during GitHub login. Please try again.', 'error')
+        return redirect(url_for('web_login'))
+
+
 @app.route('/api/auth/logout', methods=['POST'])
 @login_required
 def api_logout():
@@ -940,6 +1105,120 @@ def delete_project(project_id):
     except Exception as e:
         return jsonify({
             'error': f'Failed to delete project: {str(e)}'
+        }), 500
+
+
+@app.route('/refine-project-tasks/<string:project_id>', methods=['POST'])
+@login_required
+def refine_project_tasks(project_id):
+    """
+    Refine project tasks based on user feedback using AI
+    """
+    current_app.logger.info(f"Refine project tasks request received for ID: {project_id}")
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        feedback = data.get('feedback', '').strip()
+        current_app.logger.info(f"Feedback received (first 100 chars): {feedback[:100]}")
+
+        if not feedback:
+            return jsonify({
+                'error': 'Feedback is required to refine the tasks'
+            }), 400
+
+        # Get the current user ID
+        current_user_id = get_current_user_id()
+        if not current_user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get the project
+        project = storage.load_project(project_id)
+
+        if not project:
+            current_app.logger.error(f"Project not found: {project_id}")
+            return jsonify({
+                'error': 'Project not found'
+            }), 404
+
+        # Verify the current user owns this project
+        if str(project.get('user_id')) != str(current_user_id):
+            current_app.logger.error(f"Unauthorized access attempt by user {current_user_id} for project {project_id}")
+            return jsonify({
+                'error': 'Unauthorized: You do not have permission to modify this project'
+            }), 403
+
+        # Check if project has a plan to refine
+        if not project.get('ai_data') or not project['ai_data'].get('clickup_plan'):
+            return jsonify({
+                'error': 'This project does not have a task plan to refine'
+            }), 400
+
+        try:
+            # Call the AI service to refine the task plan
+            from ai_service import generate_plan_refinement
+            current_app.logger.info("Generating task plan refinement...")
+
+            current_plan = project['ai_data']['clickup_plan']
+            project_name = project.get('name', 'Project')
+            project_brief = project.get('brief', '')
+
+            refined_plan = generate_plan_refinement(
+                project_name,
+                project_brief,
+                current_plan,
+                feedback
+            )
+
+            if not refined_plan or not isinstance(refined_plan, dict):
+                raise ValueError("Invalid response from AI service")
+
+            # Update the project's clickup_plan with the refined plan
+            project['ai_data']['clickup_plan'] = refined_plan
+
+            # Save the updated project
+            try:
+                updated_project = storage.save_project(project)
+                if not updated_project:
+                    raise Exception("Storage update failed")
+
+                current_app.logger.info(f"Successfully refined tasks for project {project_id}")
+                return jsonify({
+                    'success': True,
+                    'plan': refined_plan,
+                    'message': 'Tasks refined successfully!'
+                })
+
+            except Exception as e:
+                current_app.logger.error(f"Failed to update project in storage: {str(e)}", exc_info=True)
+                return jsonify({
+                    'error': 'Failed to save refined tasks',
+                    'details': str(e) if current_app.debug else 'An error occurred while saving the refined tasks'
+                }), 500
+
+        except ImportError as e:
+            current_app.logger.error(f"Failed to load AI service: {str(e)}", exc_info=True)
+            return jsonify({
+                'error': 'Failed to load AI service',
+                'details': str(e)
+            }), 500
+
+        except Exception as e:
+            current_app.logger.error(f"Error during task refinement: {str(e)}", exc_info=True)
+            return jsonify({
+                'error': 'Failed to generate refined tasks',
+                'details': str(e) if current_app.debug else 'An error occurred while generating the refined tasks'
+            }), 500
+
+    except Exception as e:
+        import traceback
+        error_msg = f'Unexpected error in refine_project_tasks: {str(e)}\n{traceback.format_exc()}'
+        current_app.logger.error(error_msg)
+        return jsonify({
+            'error': 'An unexpected error occurred',
+            'details': str(e) if current_app.debug else 'Please try again later'
         }), 500
 
 
@@ -2020,6 +2299,176 @@ def delete_user_clickup_token():
         current_app.logger.error(f'Error deleting ClickUp token: {str(e)}', exc_info=True)
         return jsonify({'error': f'Failed to remove token: {str(e)}'}), 500
 
+@app.route('/api/user/linear-token', methods=['POST'])
+@login_required
+def save_linear_token():
+    """Save Linear API token for current user"""
+    try:
+        data = request.get_json()
+        token = data.get('token', '').strip()
+
+        if not token:
+            return jsonify({'success': False, 'error': 'Token is required'}), 400
+
+        # Validate token format
+        if not token.startswith('lin_api_'):
+            return jsonify({'success': False, 'error': 'Invalid Linear token format. Token should start with "lin_api_"'}), 400
+
+        # Validate token by making a test API call
+        if not validate_linear_token(token):
+            return jsonify({'success': False, 'error': 'Invalid Linear API token. Please check your token and try again.'}), 401
+
+        # Save token to database
+        user_id = session.get('user_id')
+        success = user_storage.save_user_linear_token(user_id, token)
+
+        if success:
+            return jsonify({'success': True, 'message': 'Linear token saved successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to save token'}), 500
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/user/linear-token/check', methods=['GET'])
+@login_required
+def check_linear_token():
+    """Check if current user has Linear token configured"""
+    try:
+        user_id = session.get('user_id')
+        token = user_storage.get_user_linear_token(user_id)
+
+        return jsonify({
+            'configured': bool(token)
+        })
+
+    except Exception as e:
+        return jsonify({'configured': False, 'error': str(e)}), 500
+
+
+@app.route('/api/user/linear-token', methods=['DELETE'])
+@login_required
+def delete_linear_token():
+    """Delete Linear API token for current user"""
+    try:
+        user_id = session.get('user_id')
+        success = user_storage.delete_user_linear_token(user_id)
+
+        if success:
+            return jsonify({'success': True, 'message': 'Linear token deleted successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to delete token'}), 500
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# -----------------
+# Linear API Endpoints (Pro Plan Required)
+# -----------------
+
+@app.route('/linear/check-config', methods=['GET'])
+@login_required
+@require_plan('pro')
+def check_linear_config():
+    """Check if Linear is configured for current user"""
+    try:
+        user_id = session.get('user_id')
+        token = user_storage.get_user_linear_token(user_id)
+
+        return jsonify({
+            'configured': bool(token)
+        })
+
+    except Exception as e:
+        return jsonify({'configured': False, 'error': str(e)}), 500
+
+
+@app.route('/linear/teams', methods=['GET'])
+@login_required
+@require_plan('pro')
+def get_linear_teams():
+    """Get all Linear teams for authenticated user"""
+    try:
+        user_id = session.get('user_id')
+        token = user_storage.get_user_linear_token(user_id)
+
+        if not token:
+            return jsonify({'error': 'Linear token not configured'}), 401
+
+        linear = LinearService(token)
+        teams = linear.get_teams()
+
+        return jsonify({'teams': teams})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/linear/projects/<team_id>', methods=['GET'])
+@login_required
+@require_plan('pro')
+def get_linear_projects(team_id):
+    """Get all projects in a Linear team"""
+    try:
+        user_id = session.get('user_id')
+        token = user_storage.get_user_linear_token(user_id)
+
+        if not token:
+            return jsonify({'error': 'Linear token not configured'}), 401
+
+        linear = LinearService(token)
+        projects = linear.get_projects(team_id)
+
+        return jsonify({'projects': projects})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/linear/create-issues', methods=['POST'])
+@login_required
+@require_plan('pro')
+def create_linear_issues():
+    """Create issues in Linear from project phases"""
+    try:
+        user_id = session.get('user_id')
+        token = user_storage.get_user_linear_token(user_id)
+
+        if not token:
+            return jsonify({'error': 'Linear token not configured'}), 401
+
+        data = request.get_json()
+        team_id = data.get('team_id')
+        project_id = data.get('project_id')  # Optional
+        phases = data.get('phases', [])
+
+        if not team_id:
+            return jsonify({'error': 'Team ID is required'}), 400
+
+        if not phases:
+            return jsonify({'error': 'No phases provided'}), 400
+
+        linear = LinearService(token)
+        result = linear.create_issues_from_phases(
+            team_id=team_id,
+            phases=phases,
+            project_id=project_id if project_id else None
+        )
+
+        if result.get('success'):
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'created_count': 0,
+            'failed_count': 0
+        }), 500
 
 @app.route('/home')
 def landing_page():
@@ -2458,6 +2907,7 @@ csrf.exempt(refine_estimation)
 # Project management endpoints
 csrf.exempt(save_project)
 csrf.exempt(delete_project)
+csrf.exempt(refine_project_tasks)
 
 # Weekly summary endpoints
 csrf.exempt(create_weekly_summary)
