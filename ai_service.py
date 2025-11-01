@@ -19,13 +19,17 @@ load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
-def generate_plan(project_name: str, project_description: str) -> Dict:
+def generate_plan(project_name: str, project_description: str, is_new_project: bool = True, 
+                  has_missing_info: bool = False, uploaded_text: str = None) -> Dict:
     """
     Generate AI-based project plan with review analysis, technical questions and task breakdown using Groq
 
     Args:
         project_name: Name of the project
         project_description: Detailed description of the project
+        is_new_project: Whether this is a brand new project (True) or ongoing (False)
+        has_missing_info: Whether the project has missing/incomplete information
+        uploaded_text: Extracted text from uploaded documents (optional)
 
     Returns:
         Dictionary containing AI-generated data:
@@ -38,11 +42,40 @@ def generate_plan(project_name: str, project_description: str) -> Dict:
     """
     
     try:
+        # Build project context
+        project_context = f"Project Name: {project_name}\nProject Description: {project_description}"
+        
+        # Add project type context
+        project_type = "brand new project starting from scratch" if is_new_project else "ongoing/existing project"
+        project_context += f"\nProject Type: This is a {project_type}"
+        
+        # Add missing info flag
+        if has_missing_info:
+            project_context += "\nNote: The client has indicated that this project has missing or incomplete information"
+        
+        # Add uploaded documents context
+        if uploaded_text:
+            project_context += f"\n\nAdditional Context from Uploaded Documents:\n{uploaded_text[:3000]}"  # Limit to 3000 chars
+        
+        # Adjust guidelines based on project type
+        if is_new_project:
+            focus_areas = """
+   - Suggest a complete technology stack from scratch
+   - Focus on initial architecture and setup tasks
+   - Create a task plan that starts with project initialization
+   - Emphasize foundational decisions and best practices"""
+        else:
+            focus_areas = """
+   - Evaluate the current state based on provided information
+   - Focus on identifying bottlenecks, gaps, and optimization opportunities
+   - Suggest improvements and next steps rather than starting from zero
+   - Prioritize missing information and recommendations for existing systems
+   - Create a task plan that focuses on enhancement, refactoring, or completion"""
+        
         # Create the prompt for Groq
         prompt = f"""You are a senior software architect and project planning expert. Analyze this project and provide detailed planning information.
 
-Project Name: {project_name}
-Project Description: {project_description}
+{project_context}
 
 Please provide a comprehensive analysis in the following JSON format:
 
@@ -97,12 +130,13 @@ Guidelines:
    - For each category provide: summary (2-3 sentences), 2-4 strengths, 1-3 concerns/risks, 2-4 actionable recommendations
    - Make the review specific to THIS project - reference the actual project name and requirements
 3. Generate 3-5 relevant technical questions per category based on the project description
-4. Recommend a modern, appropriate tech stack
-5. Create 4-6 key milestones that represent major project phases
-6. Create a ClickUp plan with 4-6 phases, each with 3-5 tasks
-7. Use emojis for phase names (🚀, 📋, 🎨, 🔒, 🚢, 📊, etc.)
-8. Set task priorities: "high", "medium", or "low"
-9. Make questions and tasks specific and actionable for this particular project
+4. IMPORTANT - Tailor your analysis based on project type:{focus_areas}
+5. Recommend a modern, appropriate tech stack
+6. Create 4-6 key milestones that represent major project phases
+7. Create a ClickUp plan with 4-6 phases, each with 3-5 tasks
+8. Use emojis for phase names (🚀, 📋, 🎨, 🔒, 🚢, 📊, etc.)
+9. Set task priorities: "high", "medium", or "low"
+10. Make questions and tasks specific and actionable for this particular project
 
 Return ONLY the JSON object, no additional text or markdown formatting."""
 

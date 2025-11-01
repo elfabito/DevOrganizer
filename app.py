@@ -3,13 +3,15 @@ Dev Project Organizer - Main Flask Application
 A tool to help developers organize and plan new projects with AI assistance
 """
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, g, flash, make_response, current_app
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, g, flash, make_response, current_app, send_from_directory
 from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
 from flask_session import Session
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta, timezone
 import os
 import logging
+import calendar
 from storage_redis import RedisProjectStorage, RedisUserStorage
 from clickup_service import get_clickup_service
 from auth import AuthError, verify_password, login_required, get_current_user_id
@@ -17,6 +19,9 @@ from ai_service import generate_plan, generate_weekly_summary, generate_feature_
 from functools import wraps
 import uuid
 import redis
+from daily_notes_storage import DailyNotesStorage
+from PIL import Image
+from cloudinary_service import cloudinary_service
 from stripe_service import (
     create_checkout_session,
     create_customer_portal_session,
@@ -113,6 +118,9 @@ try:
     user_storage = RedisUserStorage(redis_client)
     weekly_storage = storage  # RedisProjectStorage handles weekly summaries
 
+    # Initialize daily notes storage (SQLite-based for image management)
+    daily_notes_storage = DailyNotesStorage()
+
     app.logger.info("✓ Successfully connected to Redis")
 except Exception as e:
     raise RuntimeError(f"Failed to connect to Redis: {str(e)}. Please check your REDIS_URL configuration.")
@@ -135,6 +143,19 @@ app.config['SESSION_COOKIE_NAME'] = 'devorg_session'  # Custom name to avoid con
 app.config['SESSION_KEY_PREFIX'] = 'devorg:'  # Prefix for Redis keys to avoid collisions
 if is_production:
     app.config['PREFERRED_URL_SCHEME'] = 'https'  # Force HTTPS URLs in production
+
+# File upload configuration for daily notes images
+app.config['UPLOAD_FOLDER'] = 'uploads/note_images'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+# File upload configuration for project documents
+app.config['PROJECT_DOCUMENTS_FOLDER'] = 'uploads/project_documents'
+ALLOWED_DOCUMENT_EXTENSIONS = {'pdf', 'docx', 'txt', 'md', 'markdown'}
+
+# Ensure upload directories exist
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['PROJECT_DOCUMENTS_FOLDER'], exist_ok=True)
 
 
 
@@ -881,12 +902,43 @@ def api_signup():
 def generate_project_plan():
     """
     API endpoint to generate AI plan for a project
-    Receives project name and description, returns AI-generated data
+    Receives project name, description, options, and optional file uploads
+    Returns AI-generated data
     """
     try:
-        data = request.get_json()
-        project_name = data.get('name', '').strip()
-        project_description = data.get('description', '').strip()
+        from file_processor import process_uploaded_files
+        
+        # Handle both JSON and multipart/form-data
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            project_name = request.form.get('name', '').strip()
+            project_description = request.form.get('description', '').strip()
+            is_new_project = request.form.get('is_new_project', 'true').lower() == 'true'
+            has_missing_info = request.form.get('has_missing_info', 'false').lower() == 'true'
+            
+            # Process uploaded files
+            uploaded_text = None
+            files = request.files.getlist('documents')
+            
+            if files and files[0].filename:  # Check if files were actually uploaded
+                try:
+                    result = process_uploaded_files(files, app.config['PROJECT_DOCUMENTS_FOLDER'])
+                    
+                    if result['errors']:
+                        current_app.logger.warning(f"File processing errors: {result['errors']}")
+                    
+                    if result['combined_text']:
+                        uploaded_text = result['combined_text']
+                        current_app.logger.info(f"Processed {len(result['files'])} files, extracted {len(uploaded_text)} characters")
+                except Exception as file_error:
+                    current_app.logger.error(f"Error processing uploaded files: {str(file_error)}")
+                    # Don't fail the entire request, just log the error
+        else:
+            data = request.get_json()
+            project_name = data.get('name', '').strip()
+            project_description = data.get('description', '').strip()
+            is_new_project = data.get('is_new_project', True)
+            has_missing_info = data.get('has_missing_info', False)
+            uploaded_text = None
         
         # Validate input
         if not project_name or not project_description:
@@ -894,8 +946,14 @@ def generate_project_plan():
                 'error': 'Project name and description are required'
             }), 400
         
-        # Generate AI plan
-        ai_data = generate_plan(project_name, project_description)
+        # Generate AI plan with new parameters
+        ai_data = generate_plan(
+            project_name, 
+            project_description,
+            is_new_project=is_new_project,
+            has_missing_info=has_missing_info,
+            uploaded_text=uploaded_text
+        )
         
         return jsonify({
             'success': True,
@@ -903,6 +961,7 @@ def generate_project_plan():
         })
         
     except Exception as e:
+        current_app.logger.error(f"Error generating plan: {str(e)}", exc_info=True)
         return jsonify({
             'error': f'Failed to generate plan: {str(e)}'
         }), 500
@@ -941,8 +1000,11 @@ def save_project():
         project_name = data.get('name', '').strip()
         project_brief = data.get('brief', '').strip()
         ai_data = data.get('ai_data', {})
+        is_new_project = data.get('is_new_project', True)
+        has_missing_info = data.get('has_missing_info', False)
+        uploaded_files = data.get('uploaded_files', [])
 
-        current_app.logger.debug(f"[SAVE_PROJECT] Received data - name: {project_name}, brief: {project_brief}, ai_data keys: {list(ai_data.keys()) if isinstance(ai_data, dict) else 'not a dict'}")
+        current_app.logger.debug(f"[SAVE_PROJECT] Received data - name: {project_name}, brief: {project_brief}, is_new: {is_new_project}, has_missing: {has_missing_info}, files: {len(uploaded_files)}")
 
         # Validate input
         if not project_name or not project_brief:
@@ -977,7 +1039,10 @@ def save_project():
             'brief': project_brief,
             'ai_data': ai_data,
             'user_id': str(user_id),  # Ensure it's a string
-            'created_at': datetime.now(timezone.utc).isoformat()  # Add timestamp
+            'created_at': datetime.now(timezone.utc).isoformat(),  # Add timestamp
+            'is_new_project': is_new_project,
+            'has_missing_info': has_missing_info,
+            'uploaded_files': uploaded_files
         }
 
         # Save project
@@ -1442,6 +1507,701 @@ def delete_weekly_summary(summary_id):
         return jsonify({
             'error': f'Failed to delete weekly summary: {str(e)}'
         }), 500
+
+
+# ===== Daily Notes Routes =====
+
+def allowed_file(filename):
+    """Check if file has an allowed extension"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def validate_image(file):
+    """Validate that the uploaded file is a valid image"""
+    try:
+        img = Image.open(file)
+        img.verify()
+        file.seek(0)  # Reset file pointer after verify
+        return True
+    except Exception:
+        return False
+
+
+def get_note_upload_path(user_id, project_id, note_id):
+    """Get the upload path for a note's images"""
+    return os.path.join(app.config['UPLOAD_FOLDER'], user_id, project_id, note_id)
+
+
+def add_image_urls_to_notes(notes):
+    """
+    Add web-accessible URLs to note images.
+    Uses Cloudinary URLs if available, otherwise local URLs.
+    """
+    if not isinstance(notes, list):
+        notes = [notes]
+
+    for note in notes:
+        images = note.get('images', [])
+        for image in images:
+            # Check if image is stored in Cloudinary
+            if image.get('cloudinary_url'):
+                # Use Cloudinary URL directly
+                image['url'] = image['cloudinary_url']
+            else:
+                # Fallback to local file URL
+                # Extract path components from file_path
+                # file_path format: uploads/note_images/user_id/project_id/note_id/filename
+                file_path = image.get('file_path', '')
+
+                # Extract filename from path (works for both Windows and Unix paths)
+                filename = os.path.basename(file_path)
+
+                # Get IDs from the note
+                user_id = note.get('user_id')
+                project_id = note.get('project_id')
+                note_id = note.get('id')
+
+                if user_id and project_id and note_id and filename:
+                    # Generate proper web URL
+                    image['url'] = url_for('serve_note_image',
+                                          user_id=user_id,
+                                          project_id=project_id,
+                                          note_id=note_id,
+                                          filename=filename,
+                                          _external=False)
+
+    return notes
+
+
+@app.route('/project/<project_id>/daily-notes')
+@login_required
+def daily_notes_page(project_id):
+    """Display the daily notes page for a project"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return redirect(url_for('login'))
+
+        # Verify user owns the project
+        project = storage.load_project(project_id)
+        if not project or str(project.get('user_id')) != str(user_id):
+            flash('Unauthorized access to project', 'error')
+            return redirect(url_for('index'))
+
+        # Get selected date from query param or use today
+        selected_date = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
+
+        return render_template('daily_notes.html',
+                             project=project,
+                             selected_date=selected_date)
+
+    except Exception as e:
+        current_app.logger.error(f'Error loading daily notes page: {str(e)}', exc_info=True)
+        flash('Error loading daily notes', 'error')
+        return redirect(url_for('index'))
+
+
+@app.route('/api/daily-notes/create', methods=['POST'])
+@login_required
+def create_daily_note():
+    """Create a new daily note"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        data = request.get_json()
+        project_id = data.get('project_id')
+        title = data.get('title')
+        content = data.get('content', '')
+        note_date = data.get('note_date')
+        note_time = data.get('note_time')
+
+        # Validate required fields
+        if not all([project_id, title, note_date, note_time]):
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        # Verify user owns the project
+        project = storage.load_project(project_id)
+        if not project or str(project.get('user_id')) != str(user_id):
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        # Create the note
+        note = daily_notes_storage.create_note(
+            project_id=project_id,
+            user_id=user_id,
+            title=title,
+            content=content,
+            note_date=note_date,
+            note_time=note_time
+        )
+
+        current_app.logger.info(f'Daily note created: {note["id"]} by user {user_id}')
+        return jsonify({'success': True, 'note': note}), 201
+
+    except Exception as e:
+        current_app.logger.error(f'Error creating daily note: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to create note: {str(e)}'}), 500
+
+
+@app.route('/api/daily-notes/<note_id>', methods=['GET'])
+@login_required
+def get_daily_note(note_id):
+    """Get a specific daily note"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get the note
+        note = daily_notes_storage.get_note(note_id)
+        if not note:
+            return jsonify({'error': 'Note not found'}), 404
+
+        # Verify user owns the project
+        project = storage.load_project(note['project_id'])
+        if not project or str(project.get('user_id')) != str(user_id):
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        # Add web URLs to images
+        note = add_image_urls_to_notes([note])[0]
+
+        return jsonify({'success': True, 'note': note})
+
+    except Exception as e:
+        current_app.logger.error(f'Error getting daily note: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to get note: {str(e)}'}), 500
+
+
+@app.route('/api/daily-notes/<note_id>', methods=['PUT'])
+@login_required
+def update_daily_note(note_id):
+    """Update an existing daily note"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get the note
+        note = daily_notes_storage.get_note(note_id)
+        if not note:
+            return jsonify({'error': 'Note not found'}), 404
+
+        # Verify user owns the project
+        project = storage.load_project(note['project_id'])
+        if not project or str(project.get('user_id')) != str(user_id):
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        # Get update data
+        data = request.get_json()
+        title = data.get('title')
+        content = data.get('content')
+        note_date = data.get('note_date')
+        note_time = data.get('note_time')
+
+        # Update the note
+        success = daily_notes_storage.update_note(
+            note_id=note_id,
+            title=title,
+            content=content,
+            note_date=note_date,
+            note_time=note_time
+        )
+
+        if not success:
+            return jsonify({'error': 'Failed to update note'}), 500
+
+        # Get updated note
+        updated_note = daily_notes_storage.get_note(note_id)
+
+        current_app.logger.info(f'Daily note updated: {note_id} by user {user_id}')
+        return jsonify({'success': True, 'note': updated_note})
+
+    except Exception as e:
+        current_app.logger.error(f'Error updating daily note: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to update note: {str(e)}'}), 500
+
+
+@app.route('/api/daily-notes/<note_id>', methods=['DELETE'])
+@login_required
+def delete_daily_note(note_id):
+    """Delete a daily note"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get the note
+        note = daily_notes_storage.get_note(note_id)
+        if not note:
+            return jsonify({'error': 'Note not found'}), 404
+
+        # Verify user owns the project
+        project = storage.load_project(note['project_id'])
+        if not project or str(project.get('user_id')) != str(user_id):
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        # Delete the note (this also deletes associated images)
+        success = daily_notes_storage.delete_note(note_id)
+
+        if not success:
+            return jsonify({'error': 'Failed to delete note'}), 500
+
+        # Clean up empty directories
+        try:
+            upload_path = get_note_upload_path(user_id, note['project_id'], note_id)
+            if os.path.exists(upload_path) and not os.listdir(upload_path):
+                os.rmdir(upload_path)
+        except Exception:
+            pass  # Ignore directory cleanup errors
+
+        current_app.logger.info(f'Daily note deleted: {note_id} by user {user_id}')
+        return jsonify({'success': True, 'message': 'Note deleted successfully'})
+
+    except Exception as e:
+        current_app.logger.error(f'Error deleting daily note: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to delete note: {str(e)}'}), 500
+
+
+@app.route('/api/daily-notes/by-date', methods=['GET'])
+@login_required
+def get_notes_by_date():
+    """Get all notes for a specific project and date"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        project_id = request.args.get('project_id')
+        note_date = request.args.get('date')
+
+        if not project_id or not note_date:
+            return jsonify({'error': 'Missing project_id or date'}), 400
+
+        # Verify user owns the project
+        project = storage.load_project(project_id)
+        if not project or str(project.get('user_id')) != str(user_id):
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        # Get notes for the date
+        notes = daily_notes_storage.get_notes_by_date(project_id, note_date)
+
+        # Add web URLs to images
+        notes = add_image_urls_to_notes(notes)
+
+        return jsonify({'success': True, 'notes': notes})
+
+    except Exception as e:
+        current_app.logger.error(f'Error getting notes by date: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to get notes: {str(e)}'}), 500
+
+
+@app.route('/api/daily-notes/by-project/<project_id>', methods=['GET'])
+@login_required
+def get_notes_by_project(project_id):
+    """Get recent notes for a project"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Verify user owns the project
+        project = storage.load_project(project_id)
+        if not project or str(project.get('user_id')) != str(user_id):
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        limit = request.args.get('limit', 50, type=int)
+
+        # Get notes for the project
+        notes = daily_notes_storage.get_notes_by_project(project_id, limit)
+
+        # Add web URLs to images
+        notes = add_image_urls_to_notes(notes)
+
+        return jsonify({'success': True, 'notes': notes})
+
+    except Exception as e:
+        current_app.logger.error(f'Error getting notes by project: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to get notes: {str(e)}'}), 500
+
+
+@app.route('/api/daily-notes/<note_id>/upload-image', methods=['POST'])
+@login_required
+def upload_image_to_note(note_id):
+    """Upload an image to a note using Cloudinary"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get the note
+        note = daily_notes_storage.get_note(note_id)
+        if not note:
+            return jsonify({'error': 'Note not found'}), 404
+
+        # Verify user owns the project
+        project = storage.load_project(note['project_id'])
+        if not project or str(project.get('user_id')) != str(user_id):
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        # Check if image file is present
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image file provided'}), 400
+
+        file = request.files['image']
+
+        if file.filename == '':
+            return jsonify({'error': 'No image file selected'}), 400
+
+        # Validate file
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file type. Allowed: png, jpg, jpeg, gif, webp'}), 400
+
+        if not validate_image(file):
+            return jsonify({'error': 'Invalid image file'}), 400
+
+        # Check image limit (max 5 per note)
+        image_count = daily_notes_storage.get_image_count_for_note(note_id)
+        if image_count >= 5:
+            return jsonify({'error': 'Maximum 5 images per note'}), 400
+
+        # Generate secure filename
+        original_filename = secure_filename(file.filename)
+        
+        # Check if Cloudinary is configured
+        if cloudinary_service.is_configured():
+            # Upload to Cloudinary
+            current_app.logger.info(f'Uploading image to Cloudinary for note {note_id}')
+            
+            # Create a folder path for organization: user_id/project_id/note_id
+            folder_path = f"dev-organizer/notes/{user_id}/{note['project_id']}/{note_id}"
+            
+            cloudinary_result = cloudinary_service.upload_image(file, folder=folder_path)
+            
+            if not cloudinary_result:
+                return jsonify({'error': 'Failed to upload image to Cloudinary'}), 500
+            
+            # Add image to database with Cloudinary info
+            image_data = daily_notes_storage.add_image_to_note(
+                note_id=note_id,
+                filename=cloudinary_result['public_id'].split('/')[-1],
+                original_filename=original_filename,
+                file_path=cloudinary_result['secure_url'],  # Store Cloudinary URL
+                file_size=cloudinary_result['bytes'],
+                mime_type=f"image/{cloudinary_result['format']}",
+                cloudinary_public_id=cloudinary_result['public_id'],
+                cloudinary_url=cloudinary_result['secure_url'],
+                width=cloudinary_result.get('width'),
+                height=cloudinary_result.get('height')
+            )
+            
+            # Use Cloudinary URL directly
+            image_data['url'] = cloudinary_result['secure_url']
+            
+            current_app.logger.info(f'Image uploaded to Cloudinary: {cloudinary_result["public_id"]}')
+            
+        else:
+            # Fallback to local storage if Cloudinary is not configured
+            current_app.logger.warning('Cloudinary not configured, using local storage')
+            
+            file_ext = original_filename.rsplit('.', 1)[1].lower()
+            filename = f"{uuid.uuid4()}.{file_ext}"
+
+            # Create upload directory
+            upload_dir = get_note_upload_path(user_id, note['project_id'], note_id)
+            os.makedirs(upload_dir, exist_ok=True)
+
+            # Save file locally
+            file_path = os.path.join(upload_dir, filename)
+            file.save(file_path)
+
+            # Get file size
+            file_size = os.path.getsize(file_path)
+
+            # Get MIME type
+            mime_type = file.content_type or f'image/{file_ext}'
+
+            # Add image to database (local storage)
+            image_data = daily_notes_storage.add_image_to_note(
+                note_id=note_id,
+                filename=filename,
+                original_filename=original_filename,
+                file_path=file_path,
+                file_size=file_size,
+                mime_type=mime_type
+            )
+
+            # Generate URL for accessing the image
+            image_url = url_for('serve_note_image',
+                               user_id=user_id,
+                               project_id=note['project_id'],
+                               note_id=note_id,
+                               filename=filename)
+
+            image_data['url'] = image_url
+
+        current_app.logger.info(f'Image uploaded to note {note_id} by user {user_id}')
+        return jsonify({'success': True, 'image': image_data}), 201
+
+    except Exception as e:
+        current_app.logger.error(f'Error uploading image: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to upload image: {str(e)}'}), 500
+
+
+@app.route('/api/daily-notes/images/<image_id>', methods=['DELETE'])
+@login_required
+def delete_note_image(image_id):
+    """Delete an image from a note (including Cloudinary)"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get the image
+        image = daily_notes_storage.get_image(image_id)
+        if not image:
+            return jsonify({'error': 'Image not found'}), 404
+
+        # Get the note
+        note = daily_notes_storage.get_note(image['note_id'])
+        if not note:
+            return jsonify({'error': 'Note not found'}), 404
+
+        # Verify user owns the project
+        project = storage.load_project(note['project_id'])
+        if not project or str(project.get('user_id')) != str(user_id):
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        # If image is stored in Cloudinary, delete from there first
+        if image.get('cloudinary_public_id') and cloudinary_service.is_configured():
+            current_app.logger.info(f'Deleting image from Cloudinary: {image["cloudinary_public_id"]}')
+            cloudinary_deleted = cloudinary_service.delete_image(image['cloudinary_public_id'])
+            if not cloudinary_deleted:
+                current_app.logger.warning(f'Failed to delete from Cloudinary: {image["cloudinary_public_id"]}')
+
+        # Delete the image record from database (this also deletes local file if applicable)
+        success = daily_notes_storage.delete_note_image(image_id, delete_from_cloudinary=False)
+
+        if not success:
+            return jsonify({'error': 'Failed to delete image'}), 500
+
+        current_app.logger.info(f'Image deleted: {image_id} by user {user_id}')
+        return jsonify({'success': True, 'message': 'Image deleted successfully'})
+
+    except Exception as e:
+        current_app.logger.error(f'Error deleting image: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to delete image: {str(e)}'}), 500
+
+
+@app.route('/uploads/note_images/<user_id>/<project_id>/<note_id>/<filename>')
+@login_required
+def serve_note_image(user_id, project_id, note_id, filename):
+    """Serve a note image with authentication check"""
+    try:
+        current_user_id = get_current_user_id()
+        if not current_user_id:
+            return 'Unauthorized', 401
+
+        # Verify user owns the project
+        project = storage.load_project(project_id)
+        if not project or str(project.get('user_id')) != str(current_user_id):
+            return 'Unauthorized', 403
+
+        # Verify user_id matches
+        if str(user_id) != str(current_user_id):
+            return 'Unauthorized', 403
+
+        # Serve the file
+        directory = os.path.join(app.config['UPLOAD_FOLDER'], user_id, project_id, note_id)
+        return send_from_directory(directory, filename)
+
+    except Exception as e:
+        current_app.logger.error(f'Error serving image: {str(e)}', exc_info=True)
+        return 'File not found', 404
+
+
+@app.route('/api/daily-notes/dates/<project_id>/<int:year>/<int:month>', methods=['GET'])
+@login_required
+def get_note_dates_for_month(project_id, year, month):
+    """Get all dates that have notes for a specific month (for calendar highlighting)"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Verify user owns the project
+        project = storage.load_project(project_id)
+        if not project or str(project.get('user_id')) != str(user_id):
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        # Get dates with notes
+        dates = daily_notes_storage.get_note_dates_for_month(project_id, year, month)
+
+        return jsonify({'success': True, 'dates': dates})
+
+    except Exception as e:
+        current_app.logger.error(f'Error getting note dates: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to get note dates: {str(e)}'}), 500
+
+
+@app.route('/api/daily-notes/calendar/<project_id>/<int:year>/<int:month>', methods=['GET'])
+@login_required
+def get_calendar_html(project_id, year, month):
+    """Generate calendar HTML for a specific month using Python calendar module"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Verify user owns the project
+        project = storage.load_project(project_id)
+        if not project or str(project.get('user_id')) != str(user_id):
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        # Get dates with notes for highlighting
+        dates_with_notes = daily_notes_storage.get_note_dates_for_month(project_id, year, month)
+
+        # Get today's date
+        today = datetime.now().date()
+        today_str = today.isoformat()
+
+        # Create calendar
+        cal = calendar.monthcalendar(year, month)
+
+        # Generate HTML (just the inner content, not the wrapper)
+        html = ''
+
+        # Weekday headers (Monday first, as Python calendar uses Monday=0)
+        weekdays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
+        for day in weekdays:
+            html += f'<div class="calendar-weekday">{day}</div>'
+
+        # Calendar days
+        for week in cal:
+            for day in week:
+                if day == 0:
+                    # Empty cell for days outside the month
+                    html += '<div class="calendar-date-empty"></div>'
+                else:
+                    # Create date string
+                    date_str = f'{year}-{month:02d}-{day:02d}'
+
+                    # Determine classes
+                    classes = ['calendar-date']
+                    if date_str == today_str:
+                        classes.append('today')
+                    if date_str in dates_with_notes:
+                        classes.append('has-notes')
+
+                    html += f'<div class="{" ".join(classes)}" data-date="{date_str}" onclick="selectDate(\'{date_str}\')">{day}</div>'
+
+        return jsonify({'success': True, 'html': html, 'year': year, 'month': month})
+
+    except Exception as e:
+        current_app.logger.error(f'Error generating calendar: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to generate calendar: {str(e)}'}), 500
+
+
+@app.route('/api/daily-notes/generate-date-range-summary', methods=['POST'])
+@login_required
+@check_resource_limit('feature_suggestion')
+def generate_date_range_summary():
+    """Generate AI summary for notes within a date range"""
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        data = request.get_json()
+        project_id = data.get('project_id')
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+
+        # Validate input
+        if not project_id:
+            return jsonify({'error': 'Project ID is required'}), 400
+        if not start_date or not end_date:
+            return jsonify({'error': 'Start date and end date are required'}), 400
+
+        # Verify user owns the project
+        project = storage.load_project(project_id)
+        if not project or str(project.get('user_id')) != str(user_id):
+            return jsonify({'error': 'Unauthorized access'}), 403
+
+        # Validate date format and order
+        try:
+            start_dt = datetime.fromisoformat(start_date)
+            end_dt = datetime.fromisoformat(end_date)
+            if start_dt > end_dt:
+                return jsonify({'error': 'Start date must be before or equal to end date'}), 400
+        except ValueError:
+            return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+
+        # Get notes in date range
+        notes = daily_notes_storage.get_notes_by_date_range(project_id, start_date, end_date)
+
+        if not notes:
+            return jsonify({
+                'success': True,
+                'summary': 'No notes found for the selected date range.',
+                'note_count': 0,
+                'date_range': {'start': start_date, 'end': end_date}
+            })
+
+        # Format notes by date for AI context
+        notes_by_date = {}
+        for note in notes:
+            note_date = note['note_date']
+            if note_date not in notes_by_date:
+                notes_by_date[note_date] = []
+
+            # Format note content
+            note_text = f"**{note['title']}** ({note['note_time']})"
+            if note.get('content'):
+                note_text += f"\n{note['content']}"
+            notes_by_date[note_date].append(note_text)
+
+        # Create formatted text for AI
+        formatted_notes = []
+        for date in sorted(notes_by_date.keys()):
+            day_notes = notes_by_date[date]
+            formatted_notes.append(f"### {date}\n" + "\n\n".join(day_notes))
+
+        notes_text = "\n\n".join(formatted_notes)
+
+        # Generate AI summary using existing function
+        project_name = project.get('name', 'Project')
+
+        # Create a temporary week_notes structure for the AI function
+        # The AI function expects this format, so we'll adapt our data
+        summary_prompt = f"""
+Summarize the following daily notes from {start_date} to {end_date} for project "{project_name}".
+
+{notes_text}
+
+Please provide:
+1. A brief overview of the work done
+2. Key accomplishments
+3. Main challenges or issues encountered
+4. Notable progress or milestones
+"""
+
+        # Use the existing AI summary function
+        summary = generate_weekly_summary(project_name, {'summary_prompt': summary_prompt})
+
+        return jsonify({
+            'success': True,
+            'summary': summary,
+            'note_count': len(notes),
+            'date_range': {
+                'start': start_date,
+                'end': end_date
+            }
+        })
+
+    except Exception as e:
+        current_app.logger.error(f'Error generating date range summary: {str(e)}', exc_info=True)
+        return jsonify({'error': f'Failed to generate summary: {str(e)}'}), 500
 
 
 @app.route('/generate-feature-suggestions', methods=['POST'])

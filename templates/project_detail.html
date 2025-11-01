@@ -705,11 +705,29 @@
         margin-top: 32px;
     }
 
+    /* Desktop Tab Layout (≥768px) */
     .tabs-header {
         display: flex;
         gap: 8px;
         border-bottom: 2px solid var(--border);
         margin-bottom: 24px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+
+    .tabs-header::-webkit-scrollbar {
+        height: 4px;
+    }
+
+    .tabs-header::-webkit-scrollbar-track {
+        background: var(--light-gray);
+    }
+
+    .tabs-header::-webkit-scrollbar-thumb {
+        background: var(--gray);
+        border-radius: 2px;
     }
 
     .tab-button {
@@ -724,6 +742,10 @@
         transition: all 0.3s;
         position: relative;
         bottom: -2px;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
     .tab-button:hover {
@@ -745,6 +767,146 @@
         display: block;
     }
 
+    .tab-icon {
+        font-size: 18px;
+    }
+
+    /* Mobile Accordion Wrapper (hidden by default) */
+    .tabs-accordion {
+        display: none;
+    }
+
+    .accordion-item {
+        margin-bottom: 12px;
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--white);
+        transition: all 0.3s ease;
+    }
+
+    .accordion-item.active {
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    }
+
+    .accordion-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-bottom: 1px solid transparent;
+    }
+
+    .accordion-item.active .accordion-header {
+        background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+        border-bottom-color: var(--primary);
+    }
+
+    .accordion-header:active {
+        transform: scale(0.98);
+    }
+
+    .accordion-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--dark);
+    }
+
+    .accordion-title .tab-icon {
+        font-size: 20px;
+    }
+
+    .accordion-toggle {
+        font-size: 20px;
+        color: var(--gray);
+        transition: transform 0.3s ease, color 0.3s ease;
+        line-height: 1;
+    }
+
+    .accordion-item.active .accordion-toggle {
+        transform: rotate(180deg);
+        color: var(--primary);
+    }
+
+    .accordion-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        padding: 0 20px;
+    }
+
+    .accordion-item.active .accordion-content {
+        max-height: 5000px;
+        /* Large enough to accommodate content */
+        padding: 20px;
+    }
+
+    /* Mobile Responsive Styles (<768px) */
+    @media (max-width: 767px) {
+
+        /* Hide desktop tabs */
+        .tabs-header {
+            display: none;
+        }
+
+        .tabs-container>.tab-content {
+            display: none !important;
+        }
+
+        /* Show mobile accordion */
+        .tabs-accordion {
+            display: block;
+        }
+
+        /* Adjust header for mobile */
+        .project-header {
+            padding: 20px;
+        }
+
+        .project-header h2 {
+            font-size: 24px;
+        }
+
+        .project-meta {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* Adjust other sections for mobile */
+        .project-brief {
+            padding: 16px;
+        }
+
+        .tech-stack-box {
+            padding: 16px;
+            font-size: 14px;
+        }
+
+        /* Make section titles smaller */
+        .section h3 {
+            font-size: 18px;
+        }
+    }
+
+    /* Tablet responsive (768px - 1023px) */
+    @media (min-width: 768px) and (max-width: 1023px) {
+        .tab-button {
+            padding: 12px 20px;
+            font-size: 14px;
+        }
+
+        .tab-icon {
+            font-size: 16px;
+        }
+    }
+
     @keyframes fadeIn {
         from {
             opacity: 0;
@@ -754,6 +916,18 @@
         to {
             transform: translateX(0);
             opacity: 1;
+        }
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            max-height: 0;
+        }
+
+        to {
+            opacity: 1;
+            max-height: 5000px;
         }
     }
 
@@ -1008,30 +1182,27 @@
 
             <!-- Refine Tasks Section -->
             {% if project.ai_data.clickup_plan is mapping and project.ai_data.clickup_plan.phases %}
-            <div class="adjustment-section" style="margin-top: 40px; background: var(--light-gray); padding: 24px; border-radius: 12px;">
+            <div class="adjustment-section"
+                style="margin-top: 40px; background: var(--light-gray); padding: 24px; border-radius: 12px;">
                 <h3>🔧 Not sure with the tasks?</h3>
-                <p>If you'd like to adjust these tasks, please provide your feedback below and we'll refine them for you.</p>
+                <p>If you'd like to adjust these tasks, please provide your feedback below and we'll refine them for
+                    you.</p>
 
                 <div class="form-group" style="margin: 16px 0;">
-                    <textarea
-                        id="tasksFeedback"
-                        class="form-control"
-                        rows="4"
+                    <textarea id="tasksFeedback" class="form-control" rows="4"
                         placeholder="Example: Phase 2 has too many tasks, simplify it. Also, add a Testing phase with QA tasks."
-                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px;"
-                    ></textarea>
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px;"></textarea>
                 </div>
 
-                <button
-                    id="refineTasksBtn"
-                    class="btn btn-primary"
-                    style="display: flex; align-items: center; gap: 8px;"
-                >
+                <button id="refineTasksBtn" class="btn btn-primary"
+                    style="display: flex; align-items: center; gap: 8px;">
                     <span id="refineBtnText">🔄 Refine Tasks</span>
-                    <span id="refineSpinner" class="spinner-border spinner-border-sm" role="status" style="display: none;"></span>
+                    <span id="refineSpinner" class="spinner-border spinner-border-sm" role="status"
+                        style="display: none;"></span>
                 </button>
 
-                <div id="refineError" class="error-message" style="color: #dc3545; margin-top: 12px; display: none;"></div>
+                <div id="refineError" class="error-message" style="color: #dc3545; margin-top: 12px; display: none;">
+                </div>
             </div>
             {% endif %}
 
@@ -1245,52 +1416,1235 @@
     <!-- Tab 3: Weekly Summary -->
     <div id="weekly-tab" class="tab-content">
         <div class="section">
-            <h3>📝 Weekly Summary</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h3>📝 Weekly Summary</h3>
+                <button class="btn btn-primary" onclick="openCreateNoteModal()">
+                    ➕ Create New Note
+                </button>
+            </div>
 
-            {% if weekly_summaries and weekly_summaries|length > 0 %}
-            <!-- Existing Summaries -->
-            <div style="margin-bottom: 24px;">
-                <h4 style="font-size: 16px; color: var(--gray); margin-bottom: 16px;">Previous Summaries</h4>
-                <div style="display: grid; gap: 16px;">
-                    {% for summary in weekly_summaries %}
-                    <div class="phase-card" style="cursor: pointer;"
-                        onclick="window.location.href='/weekly-summary/{{ summary.id }}';">
+            <!-- Side-by-side layout wrapper -->
+            <div class="weekly-summary-layout">
+                <!-- Calendar Section -->
+                <div class="weekly-calendar-section">
+                    <h4 style="font-size: 18px; color: var(--dark); margin-bottom: 16px;">📆 Calendar</h4>
 
-                        <div style="padding: 16px;">
-                            <div
-                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <strong style="color: var(--dark);">Week of {{ summary.created_at[:10] if
-                                    summary.created_at else 'N/A' }}</strong>
-                                <span style="font-size: 12px; color: var(--gray);">{{ summary.created_at[:10] if
-                                    summary.created_at else 'N/A' }}</span>
+                    <div class="inline-calendar-container">
+                        <!-- Navigation -->
+                        <div class="calendar-header">
+                            <button onclick="changeMonth(-1)" class="cal-nav-btn">‹</button>
+                            <div class="calendar-title">
+                                <select id="monthSelect" onchange="renderCalendar()" class="month-year-select">
+                                    <option value="0">January</option>
+                                    <option value="1">February</option>
+                                    <option value="2">March</option>
+                                    <option value="3">April</option>
+                                    <option value="4">May</option>
+                                    <option value="5">June</option>
+                                    <option value="6">July</option>
+                                    <option value="7">August</option>
+                                    <option value="8">September</option>
+                                    <option value="9">October</option>
+                                    <option value="10">November</option>
+                                    <option value="11">December</option>
+                                </select>
+                                <select id="yearSelect" onchange="renderCalendar()" class="month-year-select">
+                                    <!-- Populated by JS -->
+                                </select>
                             </div>
-                            <div style="color: var(--gray); font-size: 14px; line-height: 1.6;">
-                                {% if summary.ai_summary %}
-                                {{ summary.ai_summary[:200] }}...
-                                {% else %}
-                                <em>No summary generated yet. Click to add notes.</em>
-                                {% endif %}
+                            <button onclick="changeMonth(1)" class="cal-nav-btn">›</button>
+                        </div>
+
+                        <!-- Calendar Grid -->
+                        <div id="calendarGrid" class="calendar-inline-grid">
+                            <!-- Generated by JavaScript -->
+                        </div>
+
+                        <!-- Today button -->
+                        <div style="text-align: center; margin-top: 12px;">
+                            <button onclick="goToToday()"
+                                style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">Today</button>
+                        </div>
+
+                        <!-- AI Summary Section -->
+                        <div class="ai-summary-section"
+                            style="margin-top: 24px; padding-top: 24px; border-top: 2px solid #e9ecef;">
+                            <h4
+                                style="font-size: 16px; color: var(--dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                                🤖 Generate AI Summary
+                            </h4>
+
+                            <!-- Date Range Inputs -->
+                            <div style="display: grid; gap: 12px; margin-bottom: 12px;">
+                                <div>
+                                    <label for="summaryStartDate"
+                                        style="display: block; font-size: 12px; color: var(--gray); margin-bottom: 4px;">Start
+                                        Date</label>
+                                    <input type="date" id="summaryStartDate" class="form-control"
+                                        style="width: 100%; padding: 8px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px;">
+                                </div>
+                                <div>
+                                    <label for="summaryEndDate"
+                                        style="display: block; font-size: 12px; color: var(--gray); margin-bottom: 4px;">End
+                                        Date</label>
+                                    <input type="date" id="summaryEndDate" class="form-control"
+                                        style="width: 100%; padding: 8px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px;">
+                                </div>
+                            </div>
+
+                            <!-- Quick Preset Buttons -->
+                            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+                                <button onclick="setDatePreset(7)" class="preset-btn"
+                                    style="flex: 1; min-width: 80px; padding: 6px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s;">Last
+                                    7 Days</button>
+                                <button onclick="setDatePreset(30)" class="preset-btn"
+                                    style="flex: 1; min-width: 80px; padding: 6px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s;">Last
+                                    30 Days</button>
+                                <button onclick="setDatePreset('month')" class="preset-btn"
+                                    style="flex: 1; min-width: 80px; padding: 6px 10px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s;">This
+                                    Month</button>
+                            </div>
+
+                            <!-- Generate Button -->
+                            <button onclick="generateDateRangeSummary()" id="generateSummaryBtn"
+                                style="width: 100%; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s; box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);">
+                                ✨ Generate Summary
+                            </button>
+
+                            <!-- Summary Display Area (Initially Hidden) -->
+                            <div id="summaryDisplayArea"
+                                style="display: none; margin-top: 16px; padding: 16px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                                    <div>
+                                        <div style="font-size: 12px; color: var(--gray); margin-bottom: 4px;"
+                                            id="summaryMetadata"></div>
+                                    </div>
+                                    <button onclick="closeSummaryDisplay()"
+                                        style="background: none; border: none; cursor: pointer; color: #6c757d; font-size: 20px; padding: 0; line-height: 1;">&times;</button>
+                                </div>
+                                <div id="summaryContent"
+                                    style="font-size: 14px; line-height: 1.6; color: var(--dark); white-space: pre-wrap;">
+                                </div>
                             </div>
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
-            </div>
-            {% endif %}
 
-            <!-- Create New Summary Button -->
+                <!-- Daily Notes List -->
+                <div class="weekly-notes-section">
+                    <h4 style="font-size: 18px; color: var(--dark); margin-bottom: 16px;" id="dailyNotesTitle">📒 Daily
+                        Notes</h4>
+                    <div id="dailyNotesList" style="display: grid; gap: 12px;">
+                        <div style="text-align: center; padding: 40px; color: var(--gray);">
+                            <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                            <p>Loading notes...</p>
+                        </div>
+                    </div>
+                </div>
+            </div> <!-- End weekly-summary-layout -->
+        </div>
+    </div>
+
+    <!-- Create/Edit Note Modal for Weekly Tab -->
+    <div id="weeklyNoteModal" class="modal"
+        style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); overflow: auto;">
+        <div class="modal-content"
+            style="background: white; margin: 50px auto; padding: 30px; max-width: 600px; border-radius: 10px; max-height: 90vh; overflow-y: auto;">
             <div
-                style="text-align: center; padding: 40px 20px; background: var(--light-gray); border-radius: 12px; border: 2px dashed var(--border);">
-                <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
-                <h4 style="margin-bottom: 12px; color: var(--dark);">Track Your Weekly Progress</h4>
-                <p style="color: var(--gray); margin-bottom: 20px;">Create a new weekly summary to log your daily work
-                    and generate AI insights</p>
-                <button class="btn btn-primary" onclick="createWeeklySummaryForProject()">
-                    ➕ Create New Weekly Summary
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #dee2e6;">
+                <h2 id="weeklyModalTitle" style="margin: 0; font-size: 24px; font-weight: 600;">Create Note</h2>
+                <button onclick="closeWeeklyNoteModal()"
+                    style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6c757d;">&times;</button>
+            </div>
+
+            <form id="weeklyNoteForm">
+                <input type="hidden" id="weeklyNoteId" value="">
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Title <span
+                            style="color: #dc3545;">*</span></label>
+                    <input type="text" id="weeklyNoteTitle" required maxlength="200"
+                        style="width: 100%; padding: 10px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px; box-sizing: border-box;"
+                        placeholder="Enter note title...">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Date <span
+                                style="color: #dc3545;">*</span></label>
+                        <input type="date" id="weeklyNoteDate" required
+                            style="width: 100%; padding: 10px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Time <span
+                                style="color: #dc3545;">*</span></label>
+                        <input type="time" id="weeklyNoteTime" required
+                            style="width: 100%; padding: 10px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Content</label>
+                    <textarea id="weeklyNoteContent" rows="6"
+                        style="width: 100%; padding: 10px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical; box-sizing: border-box;"
+                        placeholder="Enter note content..."></textarea>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Images (Max 5)</label>
+                    <div id="weeklyFileUploadArea"
+                        style="border: 2px dashed #dee2e6; border-radius: 8px; padding: 30px 20px; text-align: center; cursor: pointer; background: #f8f9fa;"
+                        onclick="document.getElementById('weeklyNoteImages').click();">
+                        <input type="file" id="weeklyNoteImages"
+                            accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" multiple style="display: none;"
+                            onchange="handleWeeklyFileSelect(event)">
+                        <div style="font-size: 48px; color: #6c757d; margin-bottom: 10px;">📎</div>
+                        <div style="color: #6c757d; margin-bottom: 5px;">Click to upload or drag and drop</div>
+                        <div style="font-size: 12px; color: #6c757d;">PNG, JPG, GIF, WEBP (Max 16MB per image)</div>
+                    </div>
+                    <div id="weeklyImagePreviewContainer"
+                        style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 15px;"></div>
+                </div>
+
+                <div id="weeklyAutosaveStatus"
+                    style="display:none; font-size: 14px; color: #6c757d; margin-top: 10px; font-style: italic;"></div>
+            </form>
+
+            <div
+                style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+                <button type="button" onclick="closeWeeklyNoteModal()"
+                    style="padding: 10px 24px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; background: #6c757d; color: white; font-weight: 500;">
+                    Cancel
+                </button>
+                <button type="button" onclick="saveWeeklyNote()" id="saveWeeklyNoteBtn"
+                    style="padding: 10px 24px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; background: #007bff; color: white; font-weight: 500;">
+                    <span id="saveWeeklyNoteBtnText">Create Note</span>
                 </button>
             </div>
         </div>
     </div>
+
+    <!-- Image Lightbox for Weekly Tab -->
+    <div id="weeklyLightbox" class="lightbox"
+        style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95);"
+        onclick="closeWeeklyLightbox()">
+        <span
+            style="position: absolute; top: 30px; right: 50px; color: white; font-size: 50px; cursor: pointer; font-weight: 300;">&times;</span>
+        <img id="weeklyLightboxImage" src="" alt="Full size image"
+            style="max-width: 90%; max-height: 90%; object-fit: contain; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 8px;">
+    </div>
+
+    <style>
+        /* Inline Calendar Styles */
+        .inline-calendar-container {
+            max-width: 350px;
+            margin: 0;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .cal-nav-btn {
+            background: white;
+            border: 1px solid #dee2e6;
+            font-size: 20px;
+            cursor: pointer;
+            color: #495057;
+            padding: 8px 14px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            line-height: 1;
+        }
+
+        .cal-nav-btn:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .calendar-title {
+            display: flex;
+            gap: 8px;
+        }
+
+        .month-year-select {
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .calendar-inline-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .cal-weekday {
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6c757d;
+            padding: 8px 0;
+        }
+
+        .cal-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            background: white;
+            border: 1px solid transparent;
+        }
+
+        .cal-day:hover {
+            background: #e7f3ff;
+            border-color: #007bff;
+        }
+
+        .cal-day.empty {
+            color: #adb5bd;
+            cursor: default;
+        }
+
+        .cal-day.empty:hover {
+            background: white;
+            border-color: transparent;
+        }
+
+        .cal-day.today {
+            background: #e7f3ff;
+            font-weight: 600;
+            color: #007bff;
+            border-color: #007bff;
+        }
+
+        .cal-day.selected {
+            background: #007bff;
+            color: white;
+            font-weight: 600;
+            border-color: #007bff;
+        }
+
+        .cal-day.has-notes::after {
+            content: '';
+            position: absolute;
+            bottom: 3px;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #007bff;
+        }
+
+        .cal-day.selected.has-notes::after {
+            background: white;
+        }
+
+        /* Weekly Summary Side-by-Side Layout */
+        .weekly-summary-layout {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+        }
+
+        .weekly-calendar-section {
+            flex: 0 0 400px;
+            /* Fixed width: 400px */
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .weekly-notes-section {
+            flex: 1;
+            /* Grow to fill remaining space */
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            min-width: 0;
+        }
+
+        /* Responsive: Stack on mobile */
+        @media (max-width: 968px) {
+            .weekly-summary-layout {
+                flex-direction: column;
+            }
+
+            .weekly-calendar-section {
+                flex: 1 1 auto;
+                width: 100%;
+            }
+        }
+
+        /* Weekly Tab Styles */
+        .weekly-note-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .weekly-note-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: #007bff;
+        }
+
+        .weekly-note-images {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .weekly-note-image-thumbnail {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid #dee2e6;
+        }
+
+        .weekly-note-image-thumbnail:hover {
+            transform: scale(1.05);
+            border-color: #007bff;
+        }
+
+        .weekly-image-preview {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #dee2e6;
+        }
+
+        .weekly-image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .weekly-image-preview-remove {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #dc3545;
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        /* AI Summary Section Styles */
+        .preset-btn:hover {
+            background: #e9ecef !important;
+            border-color: #adb5bd !important;
+        }
+
+        .preset-btn:active {
+            background: #dee2e6 !important;
+        }
+
+        #generateSummaryBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4) !important;
+        }
+
+        #generateSummaryBtn:active {
+            transform: translateY(0);
+        }
+
+        #generateSummaryBtn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        #summaryDisplayArea {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+    </style>
+
+    <script>
+        // Weekly Tab Variables
+        let weeklyCalendarInitialized = false;
+        let weeklySelectedDate = new Date().toLocaleDateString('en-CA');
+        let weeklyProjectId = '{{ project.id }}';
+        let weeklyCurrentNoteId = null;
+        let weeklyExistingImages = [];
+        let weeklyNewImagesToUpload = [];
+        let weeklyAutosaveTimer;
+        let weeklyNoteDatesCache = [];
+
+        // Helper function to get CSRF token
+        function getCSRFToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        }
+
+        // Initialize on page load if weekly tab is active
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('DOMContentLoaded - checking if weekly tab is active');
+            const weeklyTab = document.getElementById('weekly-tab');
+            if (weeklyTab && weeklyTab.classList.contains('active')) {
+                console.log('Weekly tab is active on load');
+                if (!weeklyCalendarInitialized) {
+                    initializeWeeklyTab();
+                    weeklyCalendarInitialized = true;
+                }
+            }
+        });
+
+        function initializeWeeklyTab() {
+            console.log('=== initializeWeeklyTab called ===');
+
+            // Initialize year selector
+            const yearSelect = document.getElementById('yearSelect');
+            console.log('yearSelect element:', yearSelect);
+
+            if (!yearSelect) {
+                console.error('yearSelect element not found!');
+                return;
+            }
+
+            const currentYear = new Date().getFullYear();
+            console.log('Current year:', currentYear);
+
+            for (let year = currentYear - 5; year <= currentYear + 5; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (year === currentYear) option.selected = true;
+                yearSelect.appendChild(option);
+            }
+            console.log('Year selector populated with', yearSelect.options.length, 'options');
+
+            // Set current month
+            const currentMonth = new Date().getMonth();
+            const monthSelect = document.getElementById('monthSelect');
+            console.log('monthSelect element:', monthSelect);
+            console.log('Setting month to:', currentMonth);
+
+            if (monthSelect) {
+                monthSelect.value = currentMonth;
+            }
+
+            // Render calendar
+            console.log('About to call renderCalendar()');
+            renderCalendar();
+
+            // Load notes for today
+            console.log('Loading notes for:', weeklySelectedDate);
+            loadNotesForWeeklyDate(weeklySelectedDate);
+        }
+
+        async function renderCalendar() {
+            const month = parseInt(document.getElementById('monthSelect').value);
+            const year = parseInt(document.getElementById('yearSelect').value);
+
+            try {
+                const response = await fetch(`/api/daily-notes/calendar/${weeklyProjectId}/${year}/${month + 1}`);
+                const data = await response.json();
+
+                console.log('Calendar data:', data);
+
+                if (data.success) {
+                    const grid = document.getElementById('calendarGrid');
+
+                    // Parse the calendar HTML from server
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(data.html, 'text/html');
+
+                    // Get weekday headers
+                    const weekdayHeaders = doc.querySelectorAll('.calendar-weekday');
+                    let html = '';
+
+                    // Add headers with new class
+                    weekdayHeaders.forEach(header => {
+                        html += `<div class="cal-weekday">${header.textContent}</div>`;
+                    });
+
+                    // Get calendar days
+                    const days = doc.querySelectorAll('.calendar-date, .calendar-date-empty');
+                    console.log('Found days:', days.length);
+
+                    days.forEach(day => {
+                        if (day.classList.contains('calendar-date-empty')) {
+                            html += '<div class="cal-day empty"></div>';
+                        } else {
+                            const dateStr = day.getAttribute('data-date');
+                            const dayNum = day.textContent;
+                            let classes = 'cal-day';
+                            if (day.classList.contains('today')) classes += ' today';
+                            if (day.classList.contains('has-notes')) classes += ' has-notes';
+                            if (dateStr === weeklySelectedDate) classes += ' selected';
+
+                            html += `<div class="${classes}" onclick="selectCalendarDate('${dateStr}')">${dayNum}</div>`;
+                        }
+                    });
+
+                    console.log('Generated HTML length:', html.length);
+                    grid.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Error rendering calendar:', error);
+            }
+        }
+
+        function selectCalendarDate(dateStr) {
+            weeklySelectedDate = dateStr;
+            loadNotesForWeeklyDate(dateStr);
+            renderCalendar(); // Re-render to update selected state
+        }
+
+        function changeMonth(direction) {
+            const monthSelect = document.getElementById('monthSelect');
+            const yearSelect = document.getElementById('yearSelect');
+            let month = parseInt(monthSelect.value);
+            let year = parseInt(yearSelect.value);
+
+            month += direction;
+
+            if (month < 0) {
+                month = 11;
+                year--;
+            } else if (month > 11) {
+                month = 0;
+                year++;
+            }
+
+            monthSelect.value = month;
+            yearSelect.value = year;
+            renderCalendar();
+        }
+
+        function goToToday() {
+            const today = new Date();
+            document.getElementById('monthSelect').value = today.getMonth();
+            document.getElementById('yearSelect').value = today.getFullYear();
+            weeklySelectedDate = today.toLocaleDateString('en-CA');
+            renderCalendar();
+            loadNotesForWeeklyDate(weeklySelectedDate);
+        }
+
+        // AI Summary Functions
+        function setDatePreset(preset) {
+            const endDate = new Date();
+            const startDate = new Date();
+
+            if (preset === 'month') {
+                // This month: first day to today
+                startDate.setDate(1);
+            } else {
+                // Last N days
+                startDate.setDate(endDate.getDate() - preset);
+            }
+
+            document.getElementById('summaryStartDate').value = startDate.toISOString().split('T')[0];
+            document.getElementById('summaryEndDate').value = endDate.toISOString().split('T')[0];
+        }
+
+        function closeSummaryDisplay() {
+            document.getElementById('summaryDisplayArea').style.display = 'none';
+        }
+
+        function formatDateDisplay(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00');
+            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        async function generateDateRangeSummary() {
+            const startDate = document.getElementById('summaryStartDate').value;
+            const endDate = document.getElementById('summaryEndDate').value;
+            const btn = document.getElementById('generateSummaryBtn');
+            const displayArea = document.getElementById('summaryDisplayArea');
+
+            // Validate inputs
+            if (!startDate || !endDate) {
+                showWeeklyToast('Please select both start and end dates', 'error');
+                return;
+            }
+
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+
+            if (start > end) {
+                showWeeklyToast('Start date must be before or equal to end date', 'error');
+                return;
+            }
+
+            // Calculate day difference
+            const dayDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+            // Soft limit warning for very large ranges
+            if (dayDiff > 90) {
+                if (!confirm(`You've selected ${dayDiff} days. This might take a while and use significant AI resources. Continue?`)) {
+                    return;
+                }
+            }
+
+            // Show loading state
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 8px;"><span class="spinner" style="width: 14px; height: 14px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></span> Generating...</span>';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/daily-notes/generate-date-range-summary', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        project_id: weeklyProjectId,
+                        start_date: startDate,
+                        end_date: endDate
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Display the summary
+                    const metadata = `${formatDateDisplay(startDate)} - ${formatDateDisplay(endDate)} • ${data.note_count} note${data.note_count !== 1 ? 's' : ''}`;
+                    document.getElementById('summaryMetadata').textContent = metadata;
+                    document.getElementById('summaryContent').textContent = data.summary;
+                    displayArea.style.display = 'block';
+
+                    // Smooth scroll to summary
+                    displayArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    showWeeklyToast(data.error || 'Failed to generate summary', 'error');
+                }
+            } catch (error) {
+                console.error('Error generating summary:', error);
+                showWeeklyToast('Error generating summary. Please try again.', 'error');
+            } finally {
+                // Restore button state
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function updateWeeklySelectedDateDisplay(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00');
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const formattedDate = date.toLocaleDateString('en-US', options);
+            document.getElementById('dailyNotesTitle').textContent = `📒 Daily Notes - ${formattedDate}`;
+        }
+
+        async function loadNotesForWeeklyDate(date) {
+            try {
+                const response = await fetch(`/api/daily-notes/by-date?project_id=${weeklyProjectId}&date=${date}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    renderWeeklyNotes(data.notes);
+                    updateWeeklySelectedDateDisplay(date);
+                } else {
+                    showWeeklyToast('Failed to load notes', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading notes:', error);
+                showWeeklyToast('Error loading notes', 'error');
+            }
+        }
+
+        function renderWeeklyNotes(notes) {
+            const notesList = document.getElementById('dailyNotesList');
+
+            if (notes.length === 0) {
+                notesList.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--gray);">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📝</div>
+                        <div style="font-size: 16px;">No notes for this day yet.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            notesList.innerHTML = notes.map(note => `
+                <div class="weekly-note-card">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                        <h4 style="margin: 0; font-size: 18px; font-weight: 600; color: #333; flex: 1;">${escapeHtmlWeekly(note.title)}</h4>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="background: #007bff; color: white; padding: 4px 12px; border-radius: 4px; font-size: 14px; white-space: nowrap;">⏰ ${note.note_time}</span>
+                            <button onclick="editWeeklyNote('${note.id}')" style="background: none; border: none; cursor: pointer; font-size: 18px; padding: 5px 10px;" title="Edit">✏️</button>
+                            <button onclick="deleteWeeklyNote('${note.id}')" style="background: none; border: none; cursor: pointer; font-size: 18px; padding: 5px 10px;" title="Delete">🗑️</button>
+                        </div>
+                    </div>
+
+                    ${note.content ? `<div style="color: #555; line-height: 1.6; margin-bottom: 15px; white-space: pre-wrap; word-wrap: break-word;">${escapeHtmlWeekly(note.content)}</div>` : ''}
+
+                    ${note.images && note.images.length > 0 ? `
+                        <div class="weekly-note-images">
+                            ${note.images.map(img => `
+                                <img src="${img.url || img.file_path.replace(/\\/g, '/')}"
+                                     class="weekly-note-image-thumbnail"
+                                     alt="${escapeHtmlWeekly(img.original_filename)}"
+                                     onclick="openWeeklyLightbox('${img.url || img.file_path.replace(/\\/g, '/')}')"
+                                     title="${escapeHtmlWeekly(img.original_filename)}">
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function openCreateNoteModal() {
+            weeklyCurrentNoteId = null;
+            weeklyExistingImages = [];
+            weeklyNewImagesToUpload = [];
+
+            document.getElementById('weeklyModalTitle').textContent = 'Create Note';
+            document.getElementById('saveWeeklyNoteBtnText').textContent = 'Create Note';
+            document.getElementById('weeklyNoteForm').reset();
+            document.getElementById('weeklyNoteId').value = '';
+
+            // Set default date and time
+            document.getElementById('weeklyNoteDate').value = weeklySelectedDate;
+            const now = new Date();
+            document.getElementById('weeklyNoteTime').value = now.toTimeString().slice(0, 5);
+
+            // Set default title
+            document.getElementById('weeklyNoteTitle').value = `Note - ${now.toTimeString().slice(0, 5)}`;
+
+            document.getElementById('weeklyImagePreviewContainer').innerHTML = '';
+            document.getElementById('weeklyAutosaveStatus').style.display = 'none';
+
+            document.getElementById('weeklyNoteModal').style.display = 'flex';
+            document.getElementById('weeklyNoteModal').style.alignItems = 'center';
+            document.getElementById('weeklyNoteModal').style.justifyContent = 'center';
+        }
+
+        async function editWeeklyNote(noteId) {
+            try {
+                const response = await fetch(`/api/daily-notes/${noteId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const note = data.note;
+                    weeklyCurrentNoteId = noteId;
+                    weeklyExistingImages = note.images || [];
+                    weeklyNewImagesToUpload = [];
+
+                    document.getElementById('weeklyModalTitle').textContent = 'Edit Note';
+                    document.getElementById('saveWeeklyNoteBtnText').textContent = 'Save Changes';
+                    document.getElementById('weeklyNoteId').value = noteId;
+                    document.getElementById('weeklyNoteTitle').value = note.title;
+                    document.getElementById('weeklyNoteDate').value = note.note_date;
+                    document.getElementById('weeklyNoteTime').value = note.note_time;
+                    document.getElementById('weeklyNoteContent').value = note.content || '';
+
+                    renderWeeklyExistingImages();
+                    document.getElementById('weeklyAutosaveStatus').style.display = 'block';
+
+                    document.getElementById('weeklyNoteModal').style.display = 'flex';
+                    document.getElementById('weeklyNoteModal').style.alignItems = 'center';
+                    document.getElementById('weeklyNoteModal').style.justifyContent = 'center';
+
+                    enableWeeklyAutosave();
+                } else {
+                    showWeeklyToast('Failed to load note', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading note:', error);
+                showWeeklyToast('Error loading note', 'error');
+            }
+        }
+
+        async function saveWeeklyNote() {
+            const title = document.getElementById('weeklyNoteTitle').value.trim();
+            const date = document.getElementById('weeklyNoteDate').value;
+            const time = document.getElementById('weeklyNoteTime').value;
+            const content = document.getElementById('weeklyNoteContent').value.trim();
+
+            if (!title || !date || !time) {
+                showWeeklyToast('Please fill in all required fields', 'error');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveWeeklyNoteBtn');
+            const saveBtnText = document.getElementById('saveWeeklyNoteBtnText');
+            saveBtn.disabled = true;
+            saveBtnText.innerHTML = 'Saving...';
+
+            try {
+                let noteId = weeklyCurrentNoteId;
+
+                if (!noteId) {
+                    const response = await fetch('/api/daily-notes/create', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken()
+                        },
+                        body: JSON.stringify({
+                            project_id: weeklyProjectId,
+                            title: title,
+                            content: content,
+                            note_date: date,
+                            note_time: time
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to create note');
+                    }
+                    noteId = data.note.id;
+                } else {
+                    const response = await fetch(`/api/daily-notes/${noteId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken()
+                        },
+                        body: JSON.stringify({
+                            title: title,
+                            content: content,
+                            note_date: date,
+                            note_time: time
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to update note');
+                    }
+                }
+
+                // Upload new images
+                if (weeklyNewImagesToUpload.length > 0) {
+                    for (const file of weeklyNewImagesToUpload) {
+                        const formData = new FormData();
+                        formData.append('image', file);
+                        await fetch(`/api/daily-notes/${noteId}/upload-image`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': getCSRFToken()
+                            },
+                            body: formData
+                        });
+                    }
+                }
+
+                showWeeklyToast('Note saved successfully!', 'success');
+                closeWeeklyNoteModal();
+                loadNotesForWeeklyDate(weeklySelectedDate);
+
+                // Reload calendar dates
+                const dateObj = new Date(date);
+                loadWeeklyNoteDatesForMonth(dateObj.getFullYear(), dateObj.getMonth() + 1);
+
+            } catch (error) {
+                console.error('Error saving note:', error);
+                showWeeklyToast(error.message || 'Failed to save note', 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtnText.textContent = weeklyCurrentNoteId ? 'Save Changes' : 'Create Note';
+            }
+        }
+
+        async function deleteWeeklyNote(noteId) {
+            if (!confirm('Are you sure you want to delete this note?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/daily-notes/${noteId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken()
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showWeeklyToast('Note deleted successfully', 'success');
+                    loadNotesForWeeklyDate(weeklySelectedDate);
+
+                    const dateObj = new Date(weeklySelectedDate);
+                    loadWeeklyNoteDatesForMonth(dateObj.getFullYear(), dateObj.getMonth() + 1);
+                } else {
+                    showWeeklyToast(data.error || 'Failed to delete note', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting note:', error);
+                showWeeklyToast('Error deleting note', 'error');
+            }
+        }
+
+        function handleWeeklyFileSelect(event) {
+            const files = Array.from(event.target.files);
+            const maxFiles = 5;
+            const maxSize = 16 * 1024 * 1024;
+
+            const totalImages = weeklyExistingImages.length + weeklyNewImagesToUpload.length + files.length;
+
+            if (totalImages > maxFiles) {
+                showWeeklyToast(`Maximum ${maxFiles} images per note`, 'error');
+                return;
+            }
+
+            for (const file of files) {
+                if (file.size > maxSize) {
+                    showWeeklyToast(`${file.name} is too large. Max 16MB.`, 'error');
+                    continue;
+                }
+
+                if (!file.type.startsWith('image/')) {
+                    showWeeklyToast(`${file.name} is not an image`, 'error');
+                    continue;
+                }
+
+                weeklyNewImagesToUpload.push(file);
+                previewWeeklyImage(file);
+            }
+
+            event.target.value = '';
+        }
+
+        function previewWeeklyImage(file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const container = document.getElementById('weeklyImagePreviewContainer');
+                const preview = document.createElement('div');
+                preview.className = 'weekly-image-preview';
+                preview.innerHTML = `
+                    <img src="${e.target.result}" alt="${file.name}">
+                    <button class="weekly-image-preview-remove" onclick="removeWeeklyNewImage('${file.name}')" type="button">&times;</button>
+                `;
+                container.appendChild(preview);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function renderWeeklyExistingImages() {
+            const container = document.getElementById('weeklyImagePreviewContainer');
+            container.innerHTML = weeklyExistingImages.map(img => `
+                <div class="weekly-image-preview">
+                    <img src="${img.url || img.file_path.replace(/\\/g, '/')}" alt="${escapeHtmlWeekly(img.original_filename)}">
+                    <button class="weekly-image-preview-remove" onclick="deleteWeeklyExistingImage('${img.id}')" type="button">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        function removeWeeklyNewImage(filename) {
+            weeklyNewImagesToUpload = weeklyNewImagesToUpload.filter(f => f.name !== filename);
+            // Re-render
+            const container = document.getElementById('weeklyImagePreviewContainer');
+            const existingHTML = weeklyExistingImages.map(img => `
+                <div class="weekly-image-preview">
+                    <img src="${img.url || img.file_path.replace(/\\/g, '/')}" alt="${escapeHtmlWeekly(img.original_filename)}">
+                    <button class="weekly-image-preview-remove" onclick="deleteWeeklyExistingImage('${img.id}')" type="button">&times;</button>
+                </div>
+            `).join('');
+            container.innerHTML = existingHTML;
+            weeklyNewImagesToUpload.forEach(file => previewWeeklyImage(file));
+        }
+
+        async function deleteWeeklyExistingImage(imageId) {
+            if (!confirm('Delete this image?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/daily-notes/images/${imageId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken()
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    weeklyExistingImages = weeklyExistingImages.filter(img => img.id !== imageId);
+                    renderWeeklyExistingImages();
+                    showWeeklyToast('Image deleted', 'success');
+                } else {
+                    showWeeklyToast(data.error || 'Failed to delete image', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting image:', error);
+                showWeeklyToast('Error deleting image', 'error');
+            }
+        }
+
+        function openWeeklyLightbox(imageSrc) {
+            document.getElementById('weeklyLightboxImage').src = imageSrc;
+            document.getElementById('weeklyLightbox').style.display = 'flex';
+            document.getElementById('weeklyLightbox').style.alignItems = 'center';
+            document.getElementById('weeklyLightbox').style.justifyContent = 'center';
+        }
+
+        function closeWeeklyLightbox() {
+            document.getElementById('weeklyLightbox').style.display = 'none';
+        }
+
+        function closeWeeklyNoteModal() {
+            clearTimeout(weeklyAutosaveTimer);
+            document.getElementById('weeklyNoteModal').style.display = 'none';
+            document.getElementById('weeklyNoteForm').reset();
+            weeklyCurrentNoteId = null;
+            weeklyExistingImages = [];
+            weeklyNewImagesToUpload = [];
+            document.getElementById('weeklyImagePreviewContainer').innerHTML = '';
+        }
+
+        function enableWeeklyAutosave() {
+            const fields = ['weeklyNoteTitle', 'weeklyNoteContent', 'weeklyNoteDate', 'weeklyNoteTime'];
+
+            fields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                field.addEventListener('input', () => {
+                    clearTimeout(weeklyAutosaveTimer);
+                    document.getElementById('weeklyAutosaveStatus').textContent = 'Unsaved changes...';
+
+                    weeklyAutosaveTimer = setTimeout(async () => {
+                        if (weeklyCurrentNoteId) {
+                            await autoSaveWeeklyNote();
+                        }
+                    }, 30000);
+                });
+            });
+        }
+
+        async function autoSaveWeeklyNote() {
+            if (!weeklyCurrentNoteId) return;
+
+            const title = document.getElementById('weeklyNoteTitle').value.trim();
+            const date = document.getElementById('weeklyNoteDate').value;
+            const time = document.getElementById('weeklyNoteTime').value;
+            const content = document.getElementById('weeklyNoteContent').value.trim();
+
+            if (!title || !date || !time) return;
+
+            try {
+                const response = await fetch(`/api/daily-notes/${weeklyCurrentNoteId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: title,
+                        content: content,
+                        note_date: date,
+                        note_time: time
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const now = new Date();
+                    document.getElementById('weeklyAutosaveStatus').textContent = `Saved at ${now.toLocaleTimeString()}`;
+                }
+            } catch (error) {
+                console.error('Autosave error:', error);
+            }
+        }
+
+        function showWeeklyToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.style.cssText = `position: fixed; bottom: 30px; right: 30px; padding: 16px 24px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10001; min-width: 300px; border-left: 4px solid ${type === 'success' ? '#28a745' : '#dc3545'};`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 4000);
+        }
+
+        function escapeHtmlWeekly(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Setup drag and drop
+        const weeklyUploadArea = document.getElementById('weeklyFileUploadArea');
+        if (weeklyUploadArea) {
+            weeklyUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                weeklyUploadArea.style.borderColor = '#007bff';
+                weeklyUploadArea.style.background = 'rgba(0, 123, 255, 0.05)';
+            });
+
+            weeklyUploadArea.addEventListener('dragleave', () => {
+                weeklyUploadArea.style.borderColor = '#dee2e6';
+                weeklyUploadArea.style.background = '#f8f9fa';
+            });
+
+            weeklyUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                weeklyUploadArea.style.borderColor = '#dee2e6';
+                weeklyUploadArea.style.background = '#f8f9fa';
+
+                const files = Array.from(e.dataTransfer.files);
+                const imageFiles = files.filter(f => f.type.startsWith('image/'));
+
+                if (imageFiles.length > 0) {
+                    const event = { target: { files: imageFiles } };
+                    handleWeeklyFileSelect(event);
+                }
+            });
+        }
+    </script>
 
     <!-- Tab 4: Suggest New Feature -->
     <div id="features-tab" class="tab-content">
@@ -1372,6 +2726,79 @@
             </div>
         </div>
     </div>
+
+    <!-- Mobile Accordion Layout (visible only on mobile) -->
+    <div class="tabs-accordion">
+        <!-- Accordion Item 1: Review -->
+        <div class="accordion-item active" data-tab="review">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <div class="accordion-title">
+                    <span class="tab-icon">🔍</span>
+                    <span>Review</span>
+                </div>
+                <span class="accordion-toggle">▼</span>
+            </div>
+            <div class="accordion-content">
+                <div id="review-mobile"></div>
+            </div>
+        </div>
+
+        <!-- Accordion Item 2: Technical Questions -->
+        <div class="accordion-item" data-tab="questions">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <div class="accordion-title">
+                    <span class="tab-icon">❓</span>
+                    <span>Technical Questions</span>
+                </div>
+                <span class="accordion-toggle">▼</span>
+            </div>
+            <div class="accordion-content">
+                <div id="questions-mobile"></div>
+            </div>
+        </div>
+
+        <!-- Accordion Item 3: Task Plan -->
+        <div class="accordion-item" data-tab="clickup">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <div class="accordion-title">
+                    <span class="tab-icon">📋</span>
+                    <span>Task Plan</span>
+                </div>
+                <span class="accordion-toggle">▼</span>
+            </div>
+            <div class="accordion-content">
+                <div id="clickup-mobile"></div>
+            </div>
+        </div>
+
+        <!-- Accordion Item 4: Weekly Summary -->
+        <div class="accordion-item" data-tab="weekly">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <div class="accordion-title">
+                    <span class="tab-icon">📝</span>
+                    <span>Weekly Summary</span>
+                </div>
+                <span class="accordion-toggle">▼</span>
+            </div>
+            <div class="accordion-content">
+                <div id="weekly-mobile"></div>
+            </div>
+        </div>
+
+        <!-- Accordion Item 5: Suggest New Feature -->
+        <div class="accordion-item" data-tab="features">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                <div class="accordion-title">
+                    <span class="tab-icon">💡</span>
+                    <span>Suggest New Feature</span>
+                </div>
+                <span class="accordion-toggle">▼</span>
+            </div>
+            <div class="accordion-content">
+                <div id="features-mobile"></div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="action-buttons">
@@ -1432,7 +2859,88 @@
 
         // Activate corresponding button
         event.target.closest('.tab-button').classList.add('active');
+
+        // Initialize weekly calendar if switching to weekly tab
+        if (tabName === 'weekly' && typeof weeklyCalendarInitialized !== 'undefined') {
+            console.log('Switched to weekly tab, initialized:', weeklyCalendarInitialized);
+            if (!weeklyCalendarInitialized) {
+                console.log('Initializing weekly tab...');
+                if (typeof initializeWeeklyTab === 'function') {
+                    initializeWeeklyTab();
+                    weeklyCalendarInitialized = true;
+                }
+            }
+        }
     }
+
+    // Mobile Accordion Toggle Function
+    function toggleAccordion(headerElement) {
+        const accordionItem = headerElement.closest('.accordion-item');
+        const isActive = accordionItem.classList.contains('active');
+
+        // Close all accordion items
+        document.querySelectorAll('.accordion-item').forEach(item => {
+            item.classList.remove('active');
+        });
+
+        // If the clicked item wasn't active, open it
+        if (!isActive) {
+            accordionItem.classList.add('active');
+
+            // Initialize weekly tab if needed
+            const tabName = accordionItem.getAttribute('data-tab');
+            if (tabName === 'weekly' && typeof weeklyCalendarInitialized !== 'undefined') {
+                if (!weeklyCalendarInitialized) {
+                    if (typeof initializeWeeklyTab === 'function') {
+                        setTimeout(() => {
+                            initializeWeeklyTab();
+                            weeklyCalendarInitialized = true;
+                        }, 400); // Wait for accordion animation
+                    }
+                }
+            }
+        }
+    }
+
+    // Initialize Mobile Content - Clone desktop tab content to mobile accordion
+    function initializeMobileContent() {
+        const tabNames = ['review', 'questions', 'clickup', 'weekly', 'features'];
+
+        tabNames.forEach(tabName => {
+            const desktopTab = document.getElementById(tabName + '-tab');
+            const mobileContainer = document.getElementById(tabName + '-mobile');
+
+            if (desktopTab && mobileContainer) {
+                // Clone the content from desktop tab to mobile accordion
+                mobileContainer.innerHTML = desktopTab.innerHTML;
+            }
+        });
+    }
+
+    // Call initialization when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeMobileContent);
+    } else {
+        initializeMobileContent();
+    }
+
+    // Re-initialize mobile content when window is resized across the mobile breakpoint
+    let resizeTimer;
+    let wasMobile = window.innerWidth < 768;
+
+    window.addEventListener('resize', function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            const isMobile = window.innerWidth < 768;
+            // Only re-initialize if we crossed the breakpoint
+            if (isMobile !== wasMobile) {
+                wasMobile = isMobile;
+                if (isMobile) {
+                    initializeMobileContent();
+                }
+            }
+        }, 250);
+    });
 
     // Toggle question category
     function toggleCategory(headerElement) {
@@ -1677,7 +3185,7 @@
     }
 
     // Add event listener to refine button
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const refineBtn = document.getElementById('refineTasksBtn');
         if (refineBtn) {
             refineBtn.addEventListener('click', refineTasks);
@@ -2341,16 +3849,16 @@
 
             // Update task count
             const phasesData = {{ project.ai_data.clickup_plan.phases | tojson | safe
-    }};
-            const taskCountLinear = phasesData.reduce((sum, phase) => sum + phase.tasks.length, 0);
-            document.getElementById('linearTaskCount').textContent = `Ready to create ${taskCountLinear} issues`;
+        }};
+    const taskCountLinear = phasesData.reduce((sum, phase) => sum + phase.tasks.length, 0);
+    document.getElementById('linearTaskCount').textContent = `Ready to create ${taskCountLinear} issues`;
 
-            showLinearStatus(`Loaded ${projects.length} projects`, false);
+    showLinearStatus(`Loaded ${projects.length} projects`, false);
 
         } catch (error) {
-            console.error('Error loading Linear projects:', error);
-            showLinearStatus('Error loading projects: ' + error.message, true);
-        }
+        console.error('Error loading Linear projects:', error);
+        showLinearStatus('Error loading projects: ' + error.message, true);
+    }
     }
 
     // Create issues in Linear
@@ -2366,74 +3874,74 @@
         const phasesForLinear = {{ project.ai_data.clickup_plan.phases | tojson | safe
     }};
 
-        if (!phasesForLinear || phasesForLinear.length === 0) {
-            showLinearStatus('No tasks to create', true);
-            return;
-        }
+    if (!phasesForLinear || phasesForLinear.length === 0) {
+        showLinearStatus('No tasks to create', true);
+        return;
+    }
 
-        const taskCountForLinear = phasesForLinear.reduce((sum, phase) => sum + phase.tasks.length, 0);
+    const taskCountForLinear = phasesForLinear.reduce((sum, phase) => sum + phase.tasks.length, 0);
 
-        if (!confirm(`Create ${taskCountForLinear} issues in Linear?`)) {
-            return;
-        }
+    if (!confirm(`Create ${taskCountForLinear} issues in Linear?`)) {
+        return;
+    }
 
-        showLinearStatus('Creating issues in Linear...', false);
+    showLinearStatus('Creating issues in Linear...', false);
 
-        // Disable button during creation
-        const createButton = event.target;
-        const originalText = createButton.innerHTML;
-        createButton.disabled = true;
-        createButton.innerHTML = '⏳ Creating issues...';
+    // Disable button during creation
+    const createButton = event.target;
+    const originalText = createButton.innerHTML;
+    createButton.disabled = true;
+    createButton.innerHTML = '⏳ Creating issues...';
 
-        try {
-            const response = await fetch('/linear/create-issues', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCsrfToken()
-                },
-                credentials: 'same-origin',
-                body: JSON.stringify({
-                    team_id: teamId,
-                    project_id: projectId,
-                    phases: phasesForLinear
-                })
-            });
+    try {
+        const response = await fetch('/linear/create-issues', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                team_id: teamId,
+                project_id: projectId,
+                phases: phasesForLinear
+            })
+        });
 
-            const data = await response.json();
+        const data = await response.json();
 
-            if (response.ok && data.success) {
-                showLinearStatus(`✅ Successfully created ${data.created_count} issues in Linear!`, false);
+        if (response.ok && data.success) {
+            showLinearStatus(`✅ Successfully created ${data.created_count} issues in Linear!`, false);
 
-                // Show created issues
-                if (data.created_issues && data.created_issues.length > 0) {
-                    let issueList = '<div style="margin-top: 20px; background: rgba(255,255,255,0.1); padding: 16px; border-radius: 8px;"><strong>Created Issues:</strong><ul style="margin-top: 10px;">';
-                    data.created_issues.slice(0, 5).forEach(issue => {
-                        issueList += `<li><a href="${issue.url}" target="_blank" style="color: white;">${issue.identifier}: ${issue.title}</a></li>`;
-                    });
-                    if (data.created_issues.length > 5) {
-                        issueList += `<li>... and ${data.created_issues.length - 5} more</li>`;
-                    }
-                    issueList += '</ul></div>';
-
-                    document.getElementById('linearConfigStatus').innerHTML += issueList;
+            // Show created issues
+            if (data.created_issues && data.created_issues.length > 0) {
+                let issueList = '<div style="margin-top: 20px; background: rgba(255,255,255,0.1); padding: 16px; border-radius: 8px;"><strong>Created Issues:</strong><ul style="margin-top: 10px;">';
+                data.created_issues.slice(0, 5).forEach(issue => {
+                    issueList += `<li><a href="${issue.url}" target="_blank" style="color: white;">${issue.identifier}: ${issue.title}</a></li>`;
+                });
+                if (data.created_issues.length > 5) {
+                    issueList += `<li>... and ${data.created_issues.length - 5} more</li>`;
                 }
+                issueList += '</ul></div>';
 
-                // Show failed issues if any
-                if (data.failed_count > 0) {
-                    showLinearStatus(`⚠️ ${data.failed_count} issues failed to create`, true);
-                }
-            } else {
-                showLinearStatus(data.error || 'Failed to create issues in Linear', true);
+                document.getElementById('linearConfigStatus').innerHTML += issueList;
             }
-        } catch (error) {
-            console.error('Error creating Linear issues:', error);
-            showLinearStatus('Error creating issues: ' + error.message, true);
-        } finally {
-            // Re-enable button
-            createButton.disabled = false;
-            createButton.innerHTML = originalText;
+
+            // Show failed issues if any
+            if (data.failed_count > 0) {
+                showLinearStatus(`⚠️ ${data.failed_count} issues failed to create`, true);
+            }
+        } else {
+            showLinearStatus(data.error || 'Failed to create issues in Linear', true);
         }
+    } catch (error) {
+        console.error('Error creating Linear issues:', error);
+        showLinearStatus('Error creating issues: ' + error.message, true);
+    } finally {
+        // Re-enable button
+        createButton.disabled = false;
+        createButton.innerHTML = originalText;
+    }
     }
 
     // Auto-load Linear teams on page load

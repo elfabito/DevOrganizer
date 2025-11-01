@@ -117,6 +117,18 @@ class RedisProjectStorage:
             self.r.delete(f"weekly:{sid}")
         self.r.delete(f"project_weekly:{project_id}")
 
+        # Delete daily notes for this project
+        note_ids = self.r.lrange(f"project_notes:{project_id}", 0, -1) or []
+        for nid in note_ids:
+            note = self.get_daily_note(nid)
+            if note:
+                note_date = note.get('note_date')
+                if note_date:
+                    self.r.srem(f"project_notes_date:{project_id}:{note_date}", nid)
+            self.r.delete(f"note:{nid}")
+        self.r.delete(f"project_notes:{project_id}")
+        # Clean up date indexes (note: may leave some empty sets, but harmless)
+
         # Delete the project itself
         self.r.delete(self._proj_key(project_id))
 
@@ -124,6 +136,137 @@ class RedisProjectStorage:
         if user_id:
             self.r.srem(self._user_index(user_id), project_id)
 
+        return True
+
+    # Daily notes methods
+    def create_daily_note(self, project_id: str, user_id: str, title: str,
+                         content: str, note_date: str, note_time: str) -> Dict:
+        """Create a new daily note"""
+        note_id = str(uuid.uuid4())
+        note = {
+            "id": note_id,
+            "project_id": project_id,
+            "user_id": user_id,
+            "title": title,
+            "content": content,
+            "note_date": note_date,
+            "note_time": note_time,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "images": []
+        }
+        self.r.set(f"note:{note_id}", json.dumps(note))
+        self.r.rpush(f"project_notes:{project_id}", note_id)
+        # Index by date for quick retrieval
+        self.r.sadd(f"project_notes_date:{project_id}:{note_date}", note_id)
+        return note
+
+    def get_daily_note(self, note_id: str) -> Optional[Dict]:
+        """Get a specific note by ID"""
+        raw = self.r.get(f"note:{note_id}")
+        return json.loads(raw) if raw else None
+
+    def update_daily_note(self, note_id: str, **fields) -> bool:
+        """Update an existing note"""
+        note = self.get_daily_note(note_id)
+        if not note:
+            return False
+
+        old_date = note.get('note_date')
+        old_project_id = note.get('project_id')
+
+        # Update fields
+        note.update(fields)
+        note['updated_at'] = datetime.now(timezone.utc).isoformat()
+
+        # If date changed, update date index
+        new_date = note.get('note_date')
+        if old_date != new_date:
+            self.r.srem(f"project_notes_date:{old_project_id}:{old_date}", note_id)
+            self.r.sadd(f"project_notes_date:{old_project_id}:{new_date}", note_id)
+
+        self.r.set(f"note:{note_id}", json.dumps(note))
+        return True
+
+    def delete_daily_note(self, note_id: str) -> bool:
+        """Delete a daily note"""
+        note = self.get_daily_note(note_id)
+        if not note:
+            return False
+
+        project_id = note.get('project_id')
+        note_date = note.get('note_date')
+
+        # Remove from note key
+        self.r.delete(f"note:{note_id}")
+        # Remove from project's notes list
+        if project_id:
+            self.r.lrem(f"project_notes:{project_id}", 0, note_id)
+            # Remove from date index
+            if note_date:
+                self.r.srem(f"project_notes_date:{project_id}:{note_date}", note_id)
+        return True
+
+    def get_notes_by_date(self, project_id: str, note_date: str) -> List[Dict]:
+        """Get all notes for a specific project and date"""
+        note_ids = self.r.smembers(f"project_notes_date:{project_id}:{note_date}") or []
+        notes = []
+        for nid in note_ids:
+            n = self.get_daily_note(nid)
+            if n:
+                notes.append(n)
+        # Sort by time descending
+        notes.sort(key=lambda x: x.get('note_time', ''), reverse=True)
+        return notes
+
+    def get_notes_by_project(self, project_id: str, limit: int = 50) -> List[Dict]:
+        """Get recent notes for a project"""
+        note_ids = self.r.lrange(f"project_notes:{project_id}", 0, limit - 1) or []
+        notes = []
+        for nid in note_ids:
+            n = self.get_daily_note(nid)
+            if n:
+                notes.append(n)
+        return notes
+
+    def get_notes_by_date_range(self, project_id: str, start_date: str, end_date: str) -> List[Dict]:
+        """Get all notes for a project within a date range"""
+        note_ids = self.r.lrange(f"project_notes:{project_id}", 0, -1) or []
+        notes = []
+        for nid in note_ids:
+            n = self.get_daily_note(nid)
+            if n and start_date <= n.get('note_date', '') <= end_date:
+                notes.append(n)
+        # Sort by date and time
+        notes.sort(key=lambda x: (x.get('note_date', ''), x.get('note_time', '')))
+        return notes
+
+    def add_image_to_note(self, note_id: str, image_data: Dict) -> bool:
+        """Add an image to a note's images array"""
+        note = self.get_daily_note(note_id)
+        if not note:
+            return False
+
+        images = note.get('images', [])
+        images.append(image_data)
+        note['images'] = images
+        note['updated_at'] = datetime.now(timezone.utc).isoformat()
+
+        self.r.set(f"note:{note_id}", json.dumps(note))
+        return True
+
+    def remove_image_from_note(self, note_id: str, image_id: str) -> bool:
+        """Remove an image from a note's images array"""
+        note = self.get_daily_note(note_id)
+        if not note:
+            return False
+
+        images = note.get('images', [])
+        images = [img for img in images if img.get('id') != image_id]
+        note['images'] = images
+        note['updated_at'] = datetime.now(timezone.utc).isoformat()
+
+        self.r.set(f"note:{note_id}", json.dumps(note))
         return True
 
     # Estimation methods

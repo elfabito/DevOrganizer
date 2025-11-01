@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Tabs Demo - DevOrganizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #3b82f6;
+            --secondary: #8b5cf6;
+            --dark: #1f2937;
+            --gray: #6b7280;
+            --light-gray: #f3f4f6;
+            --border: #e5e7eb;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+        }
+
+        h1 {
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+
+        .demo-info {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 32px;
+            color: #92400e;
+        }
+
+        .demo-info strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        /* Desktop Tab Layout */
+        .tabs-header {
+            display: flex;
+            gap: 8px;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 24px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tab-button {
+            padding: 14px 28px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--gray);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            bottom: -2px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-button:hover {
+            color: var(--primary);
+            background: var(--light-gray);
+        }
+
+        .tab-button.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Mobile Accordion */
+        .tabs-accordion {
+            display: none;
+        }
+
+        .accordion-item {
+            margin-bottom: 12px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--white);
+            transition: all 0.3s ease;
+        }
+
+        .accordion-item.active {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+
+        .accordion-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid transparent;
+        }
+
+        .accordion-item.active .accordion-header {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            border-bottom-color: var(--primary);
+        }
+
+        .accordion-header:active {
+            transform: scale(0.98);
+        }
+
+        .accordion-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .accordion-toggle {
+            font-size: 20px;
+            color: var(--gray);
+            transition: transform 0.3s ease, color 0.3s ease;
+            line-height: 1;
+        }
+
+        .accordion-item.active .accordion-toggle {
+            transform: rotate(180deg);
+            color: var(--primary);
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 0 20px;
+        }
+
+        .accordion-item.active .accordion-content {
+            max-height: 2000px;
+            padding: 20px;
+        }
+
+        /* Sample Content Styling */
+        .sample-content {
+            background: var(--light-gray);
+            padding: 24px;
+            border-radius: 8px;
+        }
+
+        .sample-content h3 {
+            color: var(--dark);
+            margin-bottom: 12px;
+        }
+
+        .sample-content p {
+            color: var(--gray);
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .sample-content ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .sample-content li {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 767px) {
+            body {
+                padding: 12px;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .tabs-header {
+                display: none;
+            }
+
+            .tabs-container>.tab-content {
+                display: none !important;
+            }
+
+            .tabs-accordion {
+                display: block;
+            }
+
+            .demo-info {
+                padding: 12px;
+                font-size: 14px;
+            }
+        }
+
+        .breakpoint-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--dark);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1000;
+        }
+
+        @media (max-width: 767px) {
+            .breakpoint-indicator::before {
+                content: "📱 Mobile View";
+            }
+        }
+
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .breakpoint-indicator::before {
+                content: "📱 Tablet View";
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .breakpoint-indicator::before {
+                content: "🖥️ Desktop View";
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🚀 Responsive Tabs Demo</h1>
+
+        <div class="demo-info">
+            <strong>📐 Resize your browser window to see the responsive behavior!</strong>
+            <p>
+                • Desktop (≥768px): Horizontal tabs at the top<br>
+                • Mobile (&lt;768px): Vertical accordion with expand/collapse<br>
+                • Check the indicator at the bottom-right corner to see current viewport
+            </p>
+        </div>
+
+        <div class="tabs-container">
+            <!-- Desktop Tabs -->
+            <div class="tabs-header">
+                <button class="tab-button active" onclick="switchTab('review', event)">
+                    <span>🔍</span>
+                    Review
+                </button>
+                <button class="tab-button" onclick="switchTab('questions', event)">
+                    <span>❓</span>
+                    Technical Questions
+                </button>
+                <button class="tab-button" onclick="switchTab('tasks', event)">
+                    <span>📋</span>
+                    Task Plan
+                </button>
+                <button class="tab-button" onclick="switchTab('weekly', event)">
+                    <span>📝</span>
+                    Weekly Summary
+                </button>
+                <button class="tab-button" onclick="switchTab('features', event)">
+                    <span>💡</span>
+                    Suggest New Feature
+                </button>
+            </div>
+
+            <!-- Desktop Tab Contents -->
+            <div id="review-tab" class="tab-content active">
+                <div class="sample-content">
+                    <h3>🔍 Project Review</h3>
+                    <p>This section contains a comprehensive review of your project, including:</p>
+                    <ul>
+                        <li>✅ Project strengths and advantages</li>
+                        <li>⚠️ Potential concerns and risks</li>
+                        <li>📋 Missing information that needs clarification</li>
+                        <li>🎯 Recommendations for improvement</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="questions-tab" class="tab-content">
+                <div class="sample-content">
+                    <h3>❓ Technical Questions</h3>
+                    <p>Important questions to clarify before starting development:</p>
+                    <ul>
+                        <li>What is the expected user load?</li>
+                        <li>Are there any specific security requirements?</li>
+                        <li>What is the deployment environment?</li>
+                        <li>Are there third-party integrations needed?</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="tasks-tab" class="tab-content">
+                <div class="sample-content">
+                    <h3>📋 Task Plan</h3>
+                    <p>Detailed breakdown of development tasks:</p>
+                    <ul>
+                        <li>Phase 1: Setup and Infrastructure</li>
+                        <li>Phase 2: Core Feature Development</li>
+                        <li>Phase 3: UI/UX Implementation</li>
+                        <li>Phase 4: Testing and Quality Assurance</li>
+                        <li>Phase 5: Deployment and Launch</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="weekly-tab" class="tab-content">
+                <div class="sample-content">
+                    <h3>📝 Weekly Summary</h3>
+                    <p>Track your weekly progress and achievements:</p>
+                    <ul>
+                        <li>Monday: Project planning and setup</li>
+                        <li>Tuesday-Thursday: Core development</li>
+                        <li>Friday: Code review and documentation</li>
+                        <li>Weekend: Testing and bug fixes</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="features-tab" class="tab-content">
+                <div class="sample-content">
+                    <h3>💡 Suggest New Feature</h3>
+                    <p>AI-powered feature suggestions based on your project:</p>
+                    <ul>
+                        <li>User authentication with OAuth</li>
+                        <li>Real-time notifications system</li>
+                        <li>Advanced analytics dashboard</li>
+                        <li>Mobile application support</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Mobile Accordion -->
+            <div class="tabs-accordion">
+                <div class="accordion-item active">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <div class="accordion-title">
+                            <span>🔍</span>
+                            <span>Review</span>
+                        </div>
+                        <span class="accordion-toggle">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div id="review-mobile"></div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <div class="accordion-title">
+                            <span>❓</span>
+                            <span>Technical Questions</span>
+                        </div>
+                        <span class="accordion-toggle">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div id="questions-mobile"></div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <div class="accordion-title">
+                            <span>📋</span>
+                            <span>Task Plan</span>
+                        </div>
+                        <span class="accordion-toggle">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div id="tasks-mobile"></div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <div class="accordion-title">
+                            <span>📝</span>
+                            <span>Weekly Summary</span>
+                        </div>
+                        <span class="accordion-toggle">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div id="weekly-mobile"></div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <div class="accordion-title">
+                            <span>💡</span>
+                            <span>Suggest New Feature</span>
+                        </div>
+                        <span class="accordion-toggle">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div id="features-mobile"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Breakpoint Indicator -->
+    <div class="breakpoint-indicator"></div>
+
+    <script>
+        // Desktop tab switching
+        function switchTab(tabName, event) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+
+            // Activate corresponding button
+            if (event) {
+                event.target.closest('.tab-button').classList.add('active');
+            }
+        }
+
+        // Mobile accordion toggle
+        function toggleAccordion(headerElement) {
+            const accordionItem = headerElement.closest('.accordion-item');
+            const isActive = accordionItem.classList.contains('active');
+
+            // Close all accordion items
+            document.querySelectorAll('.accordion-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // If the clicked item wasn't active, open it
+            if (!isActive) {
+                accordionItem.classList.add('active');
+            }
+        }
+
+        // Clone desktop content to mobile
+        function initializeMobileContent() {
+            const tabs = ['review', 'questions', 'tasks', 'weekly', 'features'];
+
+            tabs.forEach(tabName => {
+                const desktopTab = document.getElementById(tabName + '-tab');
+                const mobileContainer = document.getElementById(tabName + '-mobile');
+
+                if (desktopTab && mobileContainer) {
+                    mobileContainer.innerHTML = desktopTab.innerHTML;
+                }
+            });
+        }
+
+        // Initialize on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeMobileContent);
+        } else {
+            initializeMobileContent();
+        }
+
+        // Handle resize events
+        let resizeTimer;
+        let wasMobile = window.innerWidth < 768;
+
+        window.addEventListener('resize', function () {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function () {
+                const isMobile = window.innerWidth < 768;
+                if (isMobile !== wasMobile) {
+                    wasMobile = isMobile;
+                    if (isMobile) {
+                        initializeMobileContent();
+                    }
+                }
+            }, 250);
+        });
+    </script>
+</body>
+
+</html>

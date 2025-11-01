@@ -44,7 +44,7 @@ Thumbs.db
 # Environment
 .env
 .env.local
-
+.env.example
 # Database
 projects.db
 projects.db-journal
@@ -53,5 +53,9 @@ database_backups/
 # Flask sessions
 .flask_session/
 
+# Uploads
+uploads/
+
 delete_user.py
 .scripts/
+.docs/

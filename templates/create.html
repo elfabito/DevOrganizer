@@ -40,12 +40,126 @@
         line-height: 1.6;
     }
 
+    /* Checkbox styles */
+    .checkbox-group {
+        margin-top: 8px;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        font-weight: normal;
+        margin-bottom: 6px;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+    .checkbox-label span {
+        font-size: 14px;
+        color: var(--dark);
+    }
+
+    /* File upload styles */
+    .file-upload-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+
+    .file-count {
+        font-size: 14px;
+        color: var(--gray);
+        font-style: italic;
+    }
+
+    .info-message {
+        background: #eff6ff;
+        border-left: 3px solid var(--primary);
+        padding: 10px 14px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #1e40af;
+    }
+
+    .file-list {
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--light-gray);
+        padding: 12px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+    }
+
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+    }
+
+    .file-icon {
+        font-size: 20px;
+    }
+
+    .file-details {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .file-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--dark);
+    }
+
+    .file-size {
+        font-size: 12px;
+        color: var(--gray);
+    }
+
+    .file-remove {
+        background: none;
+        border: none;
+        color: var(--danger);
+        cursor: pointer;
+        font-size: 18px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+
+    .file-remove:hover {
+        background: rgba(239, 68, 68, 0.1);
+    }
+
+    .help-text {
+        font-size: 13px;
+        color: var(--gray);
+        margin-top: 6px;
+    }
+
     .form-actions {
         display: flex;
         gap: 12px;
         margin-top: 32px;
     }
-    
+
     /* Tabs */
     .tabs-container {
         margin-top: 24px;
@@ -54,20 +168,22 @@
         overflow: hidden;
         box-shadow: var(--shadow);
     }
-    
+
     .tabs-header {
         display: flex;
         border-bottom: 1px solid var(--border);
         background: #f8fafc;
         padding: 0 16px;
         overflow-x: auto;
-        scrollbar-width: none; /* Firefox */
+        scrollbar-width: none;
+        /* Firefox */
     }
-    
+
     .tabs-header::-webkit-scrollbar {
-        display: none; /* Chrome, Safari, Edge */
+        display: none;
+        /* Chrome, Safari, Edge */
     }
-    
+
     .tab-button {
         padding: 14px 20px;
         background: none;
@@ -84,17 +200,17 @@
         transition: all 0.2s;
         position: relative;
     }
-    
+
     .tab-button:hover:not(.disabled) {
         color: var(--primary);
         background: rgba(59, 130, 246, 0.05);
     }
-    
+
     .tab-button.active {
         color: var(--primary);
         border-bottom-color: var(--primary);
     }
-    
+
     .tab-button .tab-badge {
         background: var(--danger);
         color: white;
@@ -105,7 +221,7 @@
         position: relative;
         top: -1px;
     }
-    
+
     .tab-badge {
         background: var(--danger);
         color: white;
@@ -114,20 +230,20 @@
         border-radius: 10px;
         margin-left: 4px;
     }
-    
+
     .tab-icon {
         font-size: 16px;
     }
-    
+
     .tab-content {
         display: none;
         padding: 24px;
     }
-    
+
     .tab-content.active {
         display: block;
     }
-    
+
     .disabled-tab {
         background: #f8fafc;
         color: var(--gray);
@@ -142,26 +258,26 @@
         align-items: center;
         justify-content: center;
     }
-    
+
     .save-required-message {
         max-width: 500px;
         margin: 0 auto;
         text-align: center;
         padding: 40px 0;
     }
-    
+
     .save-required-icon {
         font-size: 48px;
         margin-bottom: 20px;
         opacity: 0.7;
     }
-    
+
     .save-required-message h3 {
         color: var(--dark);
         margin-bottom: 12px;
         font-size: 20px;
     }
-    
+
     .save-required-message p {
         color: var(--gray);
         margin-bottom: 24px;
@@ -208,7 +324,7 @@
     .collapsible-section {
         margin-bottom: 15px;
     }
-    
+
     .collapsible-header {
         cursor: pointer;
         padding: 12px 16px;
@@ -222,21 +338,21 @@
         align-items: center;
         transition: all 0.2s ease;
     }
-    
+
     .collapsible-header:hover {
         background-color: #e9e9e9;
     }
-    
+
     .collapsible-header:after {
         content: '▼';
         font-size: 12px;
         transition: transform 0.3s ease;
     }
-    
+
     .collapsible-header.collapsed:after {
         transform: rotate(-90deg);
     }
-    
+
     .collapsible-content {
         padding: 0;
         border: 1px solid #ddd;
@@ -245,12 +361,12 @@
         display: none;
         overflow: hidden;
     }
-    
+
     .collapsible-content.expanded {
         display: block;
         padding: 15px;
     }
-    
+
     .questions-category {
         margin: 0;
     }
@@ -543,7 +659,7 @@
     }
 
     .phase-card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         transform: translateY(-2px);
     }
 
@@ -711,6 +827,7 @@
             opacity: 0;
             transform: translateY(10px);
         }
+
         to {
             opacity: 1;
             transform: translateY(0);
@@ -731,26 +848,56 @@
 <form id="projectForm">
     <div class="form-group">
         <label for="projectName">Project Name *</label>
-        <input 
-            type="text" 
-            id="projectName" 
-            name="name" 
-            required 
-            placeholder="e.g., E-commerce Platform"
-            maxlength="100"
-        >
+        <input type="text" id="projectName" name="name" required placeholder="e.g., E-commerce Platform"
+            maxlength="100">
         <div class="help-text">Give your project a clear, descriptive name</div>
     </div>
 
     <div class="form-group">
         <label for="projectDescription">Project Description *</label>
-        <textarea 
-            id="projectDescription" 
-            name="description" 
-            required 
-            placeholder="Describe your project in detail. Include the purpose, key features, target users, and any technical requirements you have in mind..."
-        ></textarea>
+        <textarea id="projectDescription" name="description" required
+            placeholder="Describe your project in detail. Include the purpose, key features, target users, and any technical requirements you have in mind..."></textarea>
         <div class="help-text">The more detailed your description, the better the AI analysis will be</div>
+    </div>
+
+    <div class="form-group">
+        <div class="checkbox-group">
+            <label class="checkbox-label">
+                <input type="checkbox" id="isOngoingProject" name="isOngoingProject">
+                <span>This is not a brand new project</span>
+            </label>
+            <div class="help-text">Check this if you're working on an existing/ongoing project rather than starting from
+                scratch</div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="checkbox-group">
+            <label class="checkbox-label">
+                <input type="checkbox" id="hasMissingInfo" name="hasMissingInfo">
+                <span>This project has missing information</span>
+            </label>
+            <div class="help-text">Check this if important details or requirements are incomplete or unclear</div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="projectDocuments">Upload Project Documents (Optional)</label>
+        <div class="file-upload-container">
+            <input type="file" id="projectDocuments" name="documents" multiple accept=".pdf,.docx,.txt,.md,.markdown"
+                style="display: none;" onchange="handleFileSelection(event)">
+            <button type="button" class="btn btn-secondary"
+                onclick="document.getElementById('projectDocuments').click()">
+                📎 Choose Files
+            </button>
+            <span class="file-count" id="fileCount">No files selected</span>
+        </div>
+        <div class="help-text">Upload relevant documents (PDF, DOCX, TXT, MD) to provide additional context. Max 10MB
+            per file.</div>
+        <div class="info-message" style="margin-top: 12px;">
+            💡 <em>Uploaded documents will be analyzed by AI to improve context understanding.</em>
+        </div>
+        <div id="fileList" class="file-list"></div>
     </div>
 
     <div class="form-actions">
@@ -825,7 +972,8 @@
                 <div class="save-required-message">
                     <div class="save-required-icon">🔒</div>
                     <h3>Save Project to Unlock</h3>
-                    <p>This feature is only available after saving your project. Please save your project to access the Weekly Summary and other advanced features.</p>
+                    <p>This feature is only available after saving your project. Please save your project to access the
+                        Weekly Summary and other advanced features.</p>
                     <button class="btn btn-primary" onclick="document.getElementById('saveProjectBtn').click()">
                         💾 Save Project Now
                     </button>
@@ -838,7 +986,8 @@
                 <div class="save-required-message">
                     <div class="save-required-icon">🔒</div>
                     <h3>Save Project to Unlock</h3>
-                    <p>This feature is only available after saving your project. Please save your project to access Feature Suggestions and other advanced features.</p>
+                    <p>This feature is only available after saving your project. Please save your project to access
+                        Feature Suggestions and other advanced features.</p>
                     <button class="btn btn-primary" onclick="document.getElementById('saveProjectBtn').click()">
                         💾 Save Project Now
                     </button>
@@ -859,11 +1008,12 @@
 
 <script>
     let currentAIData = null;
+    let selectedFiles = [];
 
     function showAlert(message, type = 'info') {
         const alertContainer = document.getElementById('alertContainer');
         const alertClass = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : 'alert-info';
-        
+
         alertContainer.innerHTML = `
             <div class="alert ${alertClass} show">
                 ${message}
@@ -875,12 +1025,103 @@
         }, 5000);
     }
 
+    // File handling functions
+    function handleFileSelection(event) {
+        const files = Array.from(event.target.files);
+        const allowedExtensions = ['pdf', 'docx', 'txt', 'md', 'markdown'];
+        const maxSize = 10 * 1024 * 1024; // 10MB
+
+        for (const file of files) {
+            // Check file extension
+            const extension = file.name.split('.').pop().toLowerCase();
+            if (!allowedExtensions.includes(extension)) {
+                showAlert(`File "${file.name}" has an unsupported format. Allowed: PDF, DOCX, TXT, MD`, 'error');
+                continue;
+            }
+
+            // Check file size
+            if (file.size > maxSize) {
+                showAlert(`File "${file.name}" exceeds the maximum size of 10MB`, 'error');
+                continue;
+            }
+
+            // Check for duplicates
+            const isDuplicate = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+            if (isDuplicate) {
+                showAlert(`File "${file.name}" is already selected`, 'error');
+                continue;
+            }
+
+            selectedFiles.push(file);
+        }
+
+        updateFileList();
+        // Reset input to allow re-selecting the same file if removed
+        event.target.value = '';
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        updateFileList();
+    }
+
+    function updateFileList() {
+        const fileList = document.getElementById('fileList');
+        const fileCount = document.getElementById('fileCount');
+
+        if (selectedFiles.length === 0) {
+            fileList.innerHTML = '';
+            fileCount.textContent = 'No files selected';
+            return;
+        }
+
+        fileCount.textContent = `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} selected`;
+
+        fileList.innerHTML = selectedFiles.map((file, index) => {
+            const sizeKB = (file.size / 1024).toFixed(1);
+            const extension = file.name.split('.').pop().toLowerCase();
+            const icon = getFileIcon(extension);
+
+            return `
+                <div class="file-item">
+                    <div class="file-info">
+                        <span class="file-icon">${icon}</span>
+                        <div class="file-details">
+                            <div class="file-name">${escapeHtml(file.name)}</div>
+                            <div class="file-size">${sizeKB} KB</div>
+                        </div>
+                    </div>
+                    <button type="button" class="file-remove" onclick="removeFile(${index})" title="Remove file">
+                        ✕
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function getFileIcon(extension) {
+        const icons = {
+            'pdf': '📄',
+            'docx': '📝',
+            'txt': '📃',
+            'md': '📋',
+            'markdown': '📋'
+        };
+        return icons[extension] || '📎';
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     function updateSteps(currentStep) {
         const steps = ['step1', 'step2', 'step3'];
         steps.forEach((stepId, index) => {
             const step = document.getElementById(stepId);
             step.classList.remove('active', 'completed');
-            
+
             if (index < currentStep - 1) {
                 step.classList.add('completed');
             } else if (index === currentStep - 1) {
@@ -892,6 +1133,8 @@
     async function generatePlan() {
         const name = document.getElementById('projectName').value.trim();
         const description = document.getElementById('projectDescription').value.trim();
+        const isOngoingProject = document.getElementById('isOngoingProject').checked;
+        const hasMissingInfo = document.getElementById('hasMissingInfo').checked;
 
         if (!name || !description) {
             showAlert('Please fill in both project name and description', 'error');
@@ -906,15 +1149,26 @@
         try {
             // Get CSRF token from meta tag
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            
+
+            // Prepare form data with files
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('description', description);
+            formData.append('is_new_project', !isOngoingProject); // Inverted logic
+            formData.append('has_missing_info', hasMissingInfo);
+
+            // Append all selected files
+            selectedFiles.forEach((file, index) => {
+                formData.append('documents', file);
+            });
+
             const response = await fetch('/api/generate-plan', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({ name, description })
+                body: formData
             });
 
             const data = await response.json();
@@ -925,7 +1179,12 @@
 
             currentAIData = data.ai_data;
             displayAIResults(data.ai_data);
-            showAlert('AI analysis generated successfully! Review the results below.', 'success');
+
+            let successMessage = 'AI analysis generated successfully! Review the results below.';
+            if (selectedFiles.length > 0) {
+                successMessage += ` Analyzed ${selectedFiles.length} document${selectedFiles.length > 1 ? 's' : ''}.`;
+            }
+            showAlert(successMessage, 'success');
 
         } catch (error) {
             showAlert(error.message, 'error');
@@ -939,19 +1198,19 @@
         document.querySelectorAll('#aiResults .tab-content').forEach(tab => {
             tab.classList.remove('active');
         });
-        
+
         // Remove active class from all buttons
         document.querySelectorAll('#aiResults .tab-button').forEach(btn => {
             btn.classList.remove('active');
         });
-        
+
         // Show selected tab
         const tab = document.getElementById('preview-' + tabName + '-tab');
         tab.classList.add('active');
-        
+
         // Activate corresponding button
         event.target.classList.add('active');
-        
+
         // If it's a disabled tab, ensure it's scrolled into view
         if (tab.classList.contains('disabled-tab')) {
             tab.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1153,13 +1412,22 @@
 
         const name = document.getElementById('projectName').value.trim();
         const brief = document.getElementById('projectDescription').value.trim();
+        const isOngoingProject = document.getElementById('isOngoingProject').checked;
+        const hasMissingInfo = document.getElementById('hasMissingInfo').checked;
 
         updateSteps(3);
 
         try {
             // Get CSRF token from meta tag
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            
+
+            // Prepare file info for saving
+            const uploadedFilesInfo = selectedFiles.map(file => ({
+                name: file.name,
+                size: file.size,
+                type: file.name.split('.').pop().toLowerCase()
+            }));
+
             const response = await fetch('/api/projects', {
                 method: 'POST',
                 headers: {
@@ -1170,7 +1438,10 @@
                 body: JSON.stringify({
                     name,
                     brief,
-                    ai_data: currentAIData
+                    ai_data: currentAIData,
+                    is_new_project: !isOngoingProject,  // Inverted logic
+                    has_missing_info: hasMissingInfo,
+                    uploaded_files: uploadedFilesInfo
                 })
             });
 
@@ -1181,7 +1452,7 @@
             }
 
             showAlert('Project saved successfully! Redirecting...', 'success');
-            
+
             setTimeout(() => {
                 window.location.href = `/project/${data.project_id}`;
             }, 1500);
@@ -1190,9 +1461,7 @@
             showAlert(error.message, 'error');
             updateSteps(2);
         }
-    }
-
-    function regeneratePlan() {
+    } function regeneratePlan() {
         currentAIData = null;
         document.getElementById('aiResults').classList.remove('show');
         updateSteps(1);
