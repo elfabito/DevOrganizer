@@ -1993,6 +1993,16 @@ def delete_note_image(image_id):
         return jsonify({'error': f'Failed to delete image: {str(e)}'}), 500
 
 
+@app.route('/media/<path:filename>')
+def serve_media(filename):
+    """Serve media files (public assets like landing page images)"""
+    try:
+        return send_from_directory('media', filename)
+    except Exception as e:
+        current_app.logger.error(f'Error serving media file: {str(e)}', exc_info=True)
+        return 'File not found', 404
+
+
 @app.route('/uploads/note_images/<user_id>/<project_id>/<note_id>/<filename>')
 @login_required
 def serve_note_image(user_id, project_id, note_id, filename):
