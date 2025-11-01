@@ -280,29 +280,29 @@
     <div class="project-card" onclick="window.location.href='{{ url_for('view_project', project_id=project.id) }}'">
         <h3>{{ project.name }}</h3>
         <div class="project-meta">
-            {{ project.created_at[:10] if project.created_at else 'N/A' }}</div>
-    </div>
-    <div class="project-brief">
-        {{ project.brief }}
-    </div>
-    <div class="project-stats">
-        <div class="stat">
-            <span>📋</span>
-            <span>{{ project.ai_data.key_milestones|length }} milestones</span>
+            {{ project.created_at[:10] if project.created_at else 'N/A' }}
         </div>
-        <div class="stat">
-            <span>❓</span>
-            <span>
-                {% set question_count = namespace(value=0) %}
-                {% for category, questions in project.ai_data.questions.items() %}
-                {% set question_count.value = question_count.value + questions|length %}
-                {% endfor %}
-                {{ question_count.value }} questions
-            </span>
+        <div class="project-brief">
+            {{ project.brief }}
+        </div>
+        <div class="project-stats">
+            <div class="stat">
+                <span>📋</span>
+                <span>{{ project.ai_data.key_milestones|length }} milestones</span>
+            </div>
+            <div class="stat">
+                <span>❓</span>
+                <span>
+                    {% set question_count = namespace(value=0) %}
+                    {% for category, questions in project.ai_data.questions.items() %}
+                    {% set question_count.value = question_count.value + questions|length %}
+                    {% endfor %}
+                    {{ question_count.value }} questions
+                </span>
+            </div>
         </div>
     </div>
-</div>
-{% endfor %}
+    {% endfor %}
 </div>
 {% else %}
 <div class="empty-state">
