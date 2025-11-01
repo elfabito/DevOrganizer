@@ -3,6 +3,42 @@
 {% block title %}Login - DevOrganizer{% endblock %}
 
 {% block content %}
+<style>
+    /* Alert styles */
+    .alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .alert-error {
+        background-color: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+    }
+
+    .alert svg {
+        flex-shrink: 0;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
 <div class="auth-container">
     <div class="auth-card">
         <div class="text-center mb-8">
@@ -10,17 +46,23 @@
             <p>Sign in to your account</p>
         </div>
 
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <div class="alert alert-danger"
-            style="color: #dc3545; background-color: #f8d7da; border-color: #f5c6cb; padding: 0.75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: 0.25rem;">
-            {{ messages[0] }}
-        </div>
-        {% endif %}
-        {% endwith %}
-
         <form id="loginForm" method="POST" action="{{ url_for('web_login') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="alert alert-error">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span>{{ messages[0] }}</span>
+            </div>
+            {% endif %}
+            {% endwith %}
+
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" required class="form-input" placeholder="you@example.com"
