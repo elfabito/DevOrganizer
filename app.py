@@ -182,7 +182,7 @@ def refresh_user_data():
     from flask import session, request
 
     # Skip for static files, OPTIONS requests, and public endpoints
-    if request.endpoint in ('static', 'web_login', 'web_signup', 'api_login', 'api_signup', 'landing'):
+    if request.endpoint in ('static', 'web_login', 'web_signup', 'forgot_password', 'reset_password', 'api_login', 'api_signup', 'landing'):
         return
 
     if request.method == 'OPTIONS':
@@ -613,6 +613,113 @@ def logout():
     session.clear()
     flash('You have been successfully logged out.', 'info')
     return redirect(url_for('web_login'))
+
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """Handle forgot password requests"""
+    if request.method == 'POST':
+        try:
+            # Get email from form
+            if request.headers.get('Content-Type') == 'application/json':
+                data = request.get_json()
+            else:
+                data = request.form.to_dict()
+            
+            email = data.get('email', '').strip().lower()
+            
+            if not email:
+                flash('Email is required', 'error')
+                return render_template('auth/forgot_password.html')
+            
+            # Always show success message for security (don't reveal if email exists)
+            # But only send email if user actually exists
+            user = user_storage.get_user_by_email(email)
+            if user:
+                # Generate reset token
+                reset_token = user_storage.create_password_reset_token(email)
+                
+                if reset_token:
+                    # Send password reset email
+                    from email_service import email_service
+                    base_url = request.url_root.rstrip('/')
+                    
+                    email_sent = email_service.send_password_reset_email(
+                        to_email=email,
+                        reset_token=reset_token,
+                        base_url=base_url
+                    )
+                    
+                    if email_sent:
+                        current_app.logger.info(f"Password reset email sent to {email}")
+                    else:
+                        current_app.logger.warning(f"Failed to send password reset email to {email}")
+            
+            # Always show success message for security
+            flash('If an account exists with that email, a password reset link has been sent.', 'success')
+            return render_template('auth/forgot_password.html')
+            
+        except Exception as e:
+            current_app.logger.error(f"Error in forgot password: {str(e)}")
+            flash('An error occurred. Please try again.', 'error')
+            return render_template('auth/forgot_password.html')
+    
+    # GET request - show forgot password form
+    return render_template('auth/forgot_password.html')
+
+
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    """Handle password reset with token"""
+    token = request.args.get('token') or request.form.get('token')
+    
+    if not token:
+        flash('Invalid password reset link', 'error')
+        return redirect(url_for('web_login'))
+    
+    if request.method == 'POST':
+        try:
+            # Get form data
+            password = request.form.get('password', '')
+            confirm_password = request.form.get('confirm_password', '')
+            
+            # Validate input
+            if not password or not confirm_password:
+                flash('All fields are required', 'error')
+                return render_template('auth/reset_password.html', token=token, token_valid=True)
+            
+            if len(password) < 8:
+                flash('Password must be at least 8 characters long', 'error')
+                return render_template('auth/reset_password.html', token=token, token_valid=True)
+            
+            if password != confirm_password:
+                flash('Passwords do not match', 'error')
+                return render_template('auth/reset_password.html', token=token, token_valid=True)
+            
+            # Hash the new password
+            from auth import hash_password
+            password_hash = hash_password(password)
+            
+            # Reset password with token
+            success = user_storage.reset_password_with_token(token, password_hash)
+            
+            if success:
+                flash('Your password has been reset successfully. You can now log in with your new password.', 'success')
+                return redirect(url_for('web_login'))
+            else:
+                flash('Invalid or expired password reset link', 'error')
+                return render_template('auth/reset_password.html', token=token, token_valid=False)
+                
+        except Exception as e:
+            current_app.logger.error(f"Error resetting password: {str(e)}")
+            flash('An error occurred. Please try again.', 'error')
+            return render_template('auth/reset_password.html', token=token, token_valid=True)
+    
+    # GET request - verify token and show reset form
+    user = user_storage.verify_reset_token(token)
+    token_valid = user is not None
+    
+    return render_template('auth/reset_password.html', token=token, token_valid=token_valid)
 
 
 @app.route('/clear-session')

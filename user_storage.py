@@ -42,7 +42,9 @@ class UserStorage:
                 updated_at TEXT NOT NULL,
                 last_login TEXT,
                 is_active BOOLEAN DEFAULT 1,
-                clickup_token TEXT
+                clickup_token TEXT,
+                reset_token TEXT,
+                reset_token_expires TEXT
             )
         ''')
         
@@ -51,6 +53,17 @@ class UserStorage:
             CREATE INDEX IF NOT EXISTS idx_users_email 
             ON users(email)
         ''')
+        
+        # Add reset token columns if they don't exist (for existing databases)
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN reset_token TEXT')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN reset_token_expires TEXT')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         
         conn.commit()
         conn.close()
@@ -319,6 +332,151 @@ class UserStorage:
             return success
         except Exception as e:
             print(f"[ERROR] Failed to delete ClickUp token: {e}")
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+
+    def create_password_reset_token(self, email: str) -> Optional[str]:
+        """
+        Create a password reset token for a user
+        
+        Args:
+            email: The user's email address
+            
+        Returns:
+            The reset token if successful, None if user not found
+        """
+        user = self.get_user_by_email(email)
+        if not user:
+            return None
+        
+        # Generate a secure random token
+        reset_token = str(uuid.uuid4())
+        
+        # Token expires in 1 hour
+        from datetime import timedelta
+        expires_at = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+                UPDATE users
+                SET reset_token = ?, reset_token_expires = ?, updated_at = ?
+                WHERE email = ?
+            ''', (reset_token, expires_at, datetime.utcnow().isoformat(), email))
+            
+            conn.commit()
+            return reset_token
+        except Exception as e:
+            print(f"[ERROR] Failed to create reset token: {e}")
+            conn.rollback()
+            return None
+        finally:
+            conn.close()
+    
+    def verify_reset_token(self, token: str) -> Optional[Dict[str, Any]]:
+        """
+        Verify a password reset token and return the user if valid
+        
+        Args:
+            token: The reset token to verify
+            
+        Returns:
+            User data if token is valid, None otherwise
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+                SELECT id, email, name, reset_token_expires
+                FROM users
+                WHERE reset_token = ?
+            ''', (token,))
+            
+            row = cursor.fetchone()
+            
+            if not row:
+                return None
+            
+            user = dict(row)
+            
+            # Check if token has expired
+            expires_at = datetime.fromisoformat(user['reset_token_expires'])
+            if datetime.utcnow() > expires_at:
+                return None
+            
+            return user
+        finally:
+            conn.close()
+    
+    def reset_password_with_token(self, token: str, new_password_hash: str) -> bool:
+        """
+        Reset a user's password using a valid reset token
+        
+        Args:
+            token: The reset token
+            new_password_hash: The new hashed password
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        user = self.verify_reset_token(token)
+        if not user:
+            return False
+        
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            now = datetime.utcnow().isoformat()
+            cursor.execute('''
+                UPDATE users
+                SET password_hash = ?, 
+                    reset_token = NULL, 
+                    reset_token_expires = NULL,
+                    updated_at = ?
+                WHERE id = ?
+            ''', (new_password_hash, now, user['id']))
+            
+            success = cursor.rowcount > 0
+            conn.commit()
+            return success
+        except Exception as e:
+            print(f"[ERROR] Failed to reset password: {e}")
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+    
+    def clear_reset_token(self, user_id: str) -> bool:
+        """
+        Clear the reset token for a user
+        
+        Args:
+            user_id: The user's unique ID
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+                UPDATE users
+                SET reset_token = NULL, reset_token_expires = NULL, updated_at = ?
+                WHERE id = ?
+            ''', (datetime.utcnow().isoformat(), user_id))
+            
+            success = cursor.rowcount > 0
+            conn.commit()
+            return success
+        except Exception as e:
+            print(f"[ERROR] Failed to clear reset token: {e}")
             conn.rollback()
             return False
         finally:

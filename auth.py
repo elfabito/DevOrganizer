@@ -69,7 +69,7 @@ def login_required(f=None):
             from flask import redirect, url_for, request, session, current_app, g, jsonify
 
             # Public paths that don't require authentication
-            if request.endpoint in ('web_login', 'web_signup', 'static'):
+            if request.endpoint in ('web_login', 'web_signup', 'forgot_password', 'reset_password', 'static'):
                 return f(*args, **kwargs)
 
             # Check if user is logged in via session
