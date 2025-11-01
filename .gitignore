@@ -47,6 +47,7 @@ Thumbs.db
 .env.example
 # Database
 projects.db
+users.db
 projects.db-journal
 database_backups/
 

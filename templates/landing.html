@@ -378,7 +378,9 @@
             <div class="nav-buttons">
                 {% if current_user %}
                 <a href="{{ url_for('index') }}" class="btn btn-outline">Go to Dashboard</a>
+                {% if current_user.get('plan_type') != 'pro' %}
                 <a href="{{ url_for('create_stripe_checkout') }}" class="btn btn-primary">Upgrade to Pro</a>
+                {% endif %}
                 {% else %}
                 <a href="{{ url_for('web_login') }}" class="btn btn-outline">Log in</a>
                 <a href="{{ url_for('web_signup') }}" class="btn btn-primary">Sign up</a>

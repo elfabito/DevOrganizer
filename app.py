@@ -318,6 +318,8 @@ def index():
             messages = get_flashed_messages(with_categories=True)
         
         current_app.logger.debug("Rendering index template...")
+        current_app.logger.debug(f"[DEBUG] current_user plan_type: {user.get('plan_type', 'NOT SET')}")
+        current_app.logger.debug(f"[DEBUG] current_user subscription_status: {user.get('subscription_status', 'NOT SET')}")
         return render_template('index.html', 
                              projects=projects, 
                              estimations=estimations,
@@ -3356,10 +3358,94 @@ def landing_page():
     if user_id:
         try:
             user = user_storage.get_user_by_id(user_id)
-        except:
+            print(f"[LANDING] User ID: {user_id}")
+            print(f"[LANDING] User plan_type: {user.get('plan_type', 'NOT SET') if user else 'NO USER'}")
+            print(f"[LANDING] User subscription_status: {user.get('subscription_status', 'NOT SET') if user else 'NO USER'}")
+            print(f"[LANDING] User object: {user}")
+        except Exception as e:
+            print(f"[LANDING] Error getting user: {e}")
             pass
 
     return render_template('landing.html', current_user=user)
+
+
+@app.route('/manage-subscription')
+@login_required
+def manage_subscription():
+    '''Manage subscription page - shows upgrade or downgrade options based on current plan'''
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            flash('Please log in to manage your subscription', 'error')
+            return redirect(url_for('web_login'))
+        
+        # Get user info
+        user = user_storage.get_user_by_id(user_id)
+        if not user:
+            flash('User not found', 'error')
+            return redirect(url_for('index'))
+        
+        return render_template('manage_subscription.html', user=user, current_user=user)
+    
+    except Exception as e:
+        current_app.logger.error(f'Error loading manage subscription page: {str(e)}', exc_info=True)
+        flash('Failed to load subscription page. Please try again.', 'error')
+        return redirect(url_for('index'))
+
+
+@app.route('/cancel-subscription', methods=['POST'])
+@login_required
+@require_plan('pro')
+def cancel_subscription():
+    '''Cancel Pro subscription and downgrade to Free plan'''
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+        
+        # Get user info
+        user = user_storage.get_user_by_id(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get Stripe customer ID and subscription ID
+        customer_id = user.get('stripe_customer_id')
+        stripe_subscription_id = user.get('stripe_subscription_id')
+        
+        if not customer_id or not stripe_subscription_id:
+            # User doesn't have an active Stripe subscription, just downgrade them
+            user_storage.update_user_subscription(
+                user_id=user_id,
+                plan_type='free',
+                subscription_status='canceled'
+            )
+            flash('Your subscription has been canceled. You are now on the Free plan.', 'success')
+            return redirect(url_for('index'))
+        
+        # Cancel the Stripe subscription
+        from stripe_service import cancel_stripe_subscription
+        result = cancel_stripe_subscription(stripe_subscription_id)
+        
+        if result.get('success'):
+            # Update user to Free plan
+            user_storage.update_user_subscription(
+                user_id=user_id,
+                plan_type='free',
+                subscription_status='canceled',
+                stripe_subscription_id=None
+            )
+            
+            current_app.logger.info(f'User {user_id} canceled Pro subscription and downgraded to Free')
+            flash('Your Pro subscription has been canceled. You are now on the Free plan.', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash(f'Failed to cancel subscription: {result.get("error")}', 'error')
+            return redirect(url_for('manage_subscription'))
+    
+    except Exception as e:
+        current_app.logger.error(f'Error canceling subscription: {str(e)}', exc_info=True)
+        flash('Failed to cancel subscription. Please try again or contact support.', 'error')
+        return redirect(url_for('manage_subscription'))
 
 
 @app.route('/create-checkout-session', methods=['POST', 'GET'])

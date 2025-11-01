@@ -202,7 +202,8 @@
 
 {% block content %}
 <!-- Usage Limits Widget -->
-<div id="usageLimitsWidget" style="background: var(--white); padding: 20px; border-radius: 12px; margin-bottom: 24px; border: 2px solid var(--border);">
+<div id="usageLimitsWidget"
+    style="background: var(--white); padding: 20px; border-radius: 12px; margin-bottom: 24px; border: 2px solid var(--border);">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <h3 style="font-size: 18px; color: var(--dark);">📊 Your Usage</h3>
         <span id="currentPlanBadge" class="plan-badge" style="margin-left: 0;"></span>
@@ -215,8 +216,11 @@
                 <span id="projectsCount">-</span> / <span id="projectsMax">-</span>
             </div>
             <div class="usage-bar" style="margin-top: 8px;">
-                <div id="projectsBar" class="usage-bar-fill" style="height: 6px; background: var(--light-gray); border-radius: 3px; overflow: hidden;">
-                    <div style="height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); width: 0%; transition: width 0.3s;"></div>
+                <div id="projectsBar" class="usage-bar-fill"
+                    style="height: 6px; background: var(--light-gray); border-radius: 3px; overflow: hidden;">
+                    <div
+                        style="height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); width: 0%; transition: width 0.3s;">
+                    </div>
                 </div>
             </div>
         </div>
@@ -227,8 +231,11 @@
                 <span id="estimationsCount">-</span> / <span id="estimationsMax">-</span>
             </div>
             <div class="usage-bar" style="margin-top: 8px;">
-                <div id="estimationsBar" class="usage-bar-fill" style="height: 6px; background: var(--light-gray); border-radius: 3px; overflow: hidden;">
-                    <div style="height: 100%; background: linear-gradient(90deg, var(--secondary), var(--primary)); width: 0%; transition: width 0.3s;"></div>
+                <div id="estimationsBar" class="usage-bar-fill"
+                    style="height: 6px; background: var(--light-gray); border-radius: 3px; overflow: hidden;">
+                    <div
+                        style="height: 100%; background: linear-gradient(90deg, var(--secondary), var(--primary)); width: 0%; transition: width 0.3s;">
+                    </div>
                 </div>
             </div>
         </div>
@@ -239,14 +246,18 @@
                 <span id="suggestionsCount">-</span> / <span id="suggestionsMax">-</span>
             </div>
             <div class="usage-bar" style="margin-top: 8px;">
-                <div id="suggestionsBar" class="usage-bar-fill" style="height: 6px; background: var(--light-gray); border-radius: 3px; overflow: hidden;">
-                    <div style="height: 100%; background: linear-gradient(90deg, var(--success), #059669); width: 0%; transition: width 0.3s;"></div>
+                <div id="suggestionsBar" class="usage-bar-fill"
+                    style="height: 6px; background: var(--light-gray); border-radius: 3px; overflow: hidden;">
+                    <div
+                        style="height: 100%; background: linear-gradient(90deg, var(--success), #059669); width: 0%; transition: width 0.3s;">
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="upgradePrompt" style="display: none; margin-top: 16px; padding: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1)); border-radius: 8px; border-left: 4px solid var(--primary);">
+    <div id="upgradePrompt"
+        style="display: none; margin-top: 16px; padding: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1)); border-radius: 8px; border-left: 4px solid var(--primary);">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="color: var(--dark); font-size: 14px;">
                 <strong>Need more?</strong> Upgrade to Pro for 20x the limits + ClickUp integration
@@ -264,42 +275,42 @@
 </div>
 
 {% if projects %}
-    <div class="projects-grid">
-        {% for project in projects %}
-        <div class="project-card" onclick="window.location.href='{{ url_for('view_project', project_id=project.id) }}'">
-            <h3>{{ project.name }}</h3>
-            <div class="project-meta">
-                {{ project.created_at[:10] if project.created_at else 'N/A' }}
+<div class="projects-grid">
+    {% for project in projects %}
+    <div class="project-card" onclick=`window.location.href="{{ url_for('view_project', project_id=project.id) }}" `>
+        <h3>{{ project.name }}</h3>
+        <div class="project-meta">
+            {{ project.created_at[:10] if project.created_at else 'N/A' }}
+        </div>
+        <div class="project-brief">
+            {{ project.brief }}
+        </div>
+        <div class="project-stats">
+            <div class="stat">
+                <span>📋</span>
+                <span>{{ project.ai_data.key_milestones|length }} milestones</span>
             </div>
-            <div class="project-brief">
-                {{ project.brief }}
-            </div>
-            <div class="project-stats">
-                <div class="stat">
-                    <span>📋</span>
-                    <span>{{ project.ai_data.key_milestones|length }} milestones</span>
-                </div>
-                <div class="stat">
-                    <span>❓</span>
-                    <span>
-                        {% set question_count = namespace(value=0) %}
-                        {% for category, questions in project.ai_data.questions.items() %}
-                            {% set question_count.value = question_count.value + questions|length %}
-                        {% endfor %}
-                        {{ question_count.value }} questions
-                    </span>
-                </div>
+            <div class="stat">
+                <span>❓</span>
+                <span>
+                    {% set question_count = namespace(value=0) %}
+                    {% for category, questions in project.ai_data.questions.items() %}
+                    {% set question_count.value = question_count.value + questions|length %}
+                    {% endfor %}
+                    {{ question_count.value }} questions
+                </span>
             </div>
         </div>
-        {% endfor %}
     </div>
+    {% endfor %}
+</div>
 {% else %}
-    <div class="empty-state">
-        <div class="empty-state-icon">📂</div>
-        <h2>No Projects Yet</h2>
-        <p>Start organizing your development work by creating your first project</p>
-        <a href="{{ url_for('create_project_form') }}" class="btn btn-primary">➕ Create Your First Project</a>
-    </div>
+<div class="empty-state">
+    <div class="empty-state-icon">📂</div>
+    <h2>No Projects Yet</h2>
+    <p>Start organizing your development work by creating your first project</p>
+    <a href="{{ url_for('create_project_form') }}" class="btn btn-primary">➕ Create Your First Project</a>
+</div>
 {% endif %}
 
 <!-- Estimations Section -->
@@ -312,98 +323,115 @@
 
 <!-- Estimations List -->
 {% if estimations and estimations|length > 0 %}
-    <div class="projects-grid">
-        {% for estimation in estimations %}
-        <div class="estimation-card" onclick="window.location.href='/estimation/{{ estimation.id }}'">
-            <h3>{{ estimation.project_name }}</h3>
-            <div class="estimation-meta">
-                <span>📅 {{ estimation.created_at[:10] if estimation.created_at else 'N/A' }}</span>
-                <span class="estimation-hours">⏱️ {{ estimation.total_hours }} hours</span>
-            </div>
-            <div class="estimation-description">
-                {{ estimation.project_description }}
-            </div>
-            <div class="estimation-phases">
-                {% for phase in estimation.phases %}
-                <span class="phase-badge">{{ phase.name }}</span>
-                {% endfor %}
-            </div>
+<div class="projects-grid">
+    {% for estimation in estimations %}
+    <div class="estimation-card" onclick="window.location.href='/estimation/{{ estimation.id }}'">
+        <h3>{{ estimation.project_name }}</h3>
+        <div class="estimation-meta">
+            <span>📅 {{ estimation.created_at[:10] if estimation.created_at else 'N/A' }}</span>
+            <span class="estimation-hours">⏱️ {{ estimation.total_hours }} hours</span>
         </div>
-        {% endfor %}
+        <div class="estimation-description">
+            {{ estimation.project_description }}
+        </div>
+        <div class="estimation-phases">
+            {% for phase in estimation.phases %}
+            <span class="phase-badge">{{ phase.name }}</span>
+            {% endfor %}
+        </div>
     </div>
+    {% endfor %}
+</div>
 {% else %}
-    <div class="empty-state">
-        <div class="empty-state-icon">⏱️</div>
-        <h2>No Estimations Yet</h2>
-        <p>Create your first project estimation to get AI-powered time estimates</p>
-        <a href="{{ url_for('create_estimation_form') }}" class="btn btn-primary">⏱️ Create Estimation</a>
-    </div>
+<div class="empty-state">
+    <div class="empty-state-icon">⏱️</div>
+    <h2>No Estimations Yet</h2>
+    <p>Create your first project estimation to get AI-powered time estimates</p>
+    <a href="{{ url_for('create_estimation_form') }}" class="btn btn-primary">⏱️ Create Estimation</a>
+</div>
 {% endif %}
 
 <script>
-// Load usage data on page load
-document.addEventListener('DOMContentLoaded', function() {
-    loadUsageData();
-});
+    // Load usage data on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        loadUsageData();
+    });
 
-async function loadUsageData() {
-    try {
-        const response = await fetch('/api/user/usage', {
-            method: 'GET',
-            credentials: 'same-origin'
-        });
+    async function loadUsageData() {
+        console.log('🚀 Iniciando carga de datos de uso...');
+        try {
+            console.log('📡 Haciendo fetch a /api/user/usage...');
+            const response = await fetch('/api/user/usage', {
+                method: 'GET',
+                credentials: 'same-origin'
+            });
+            console.log('📡 Response status:', response.status, response.ok);
 
-        if (!response.ok) {
-            console.error('Failed to load usage data');
-            return;
+            if (!response.ok) {
+                console.error('Failed to load usage data');
+                return;
+            }
+
+            const data = await response.json();
+
+            // Debug: mostrar datos recibidos
+            console.log('📊 API Response:', data);
+            console.log('🎯 plan_type:', data.plan_type);
+            console.log('🎯 subscription_status:', data.subscription_status);
+
+            // Update plan badge
+            const planBadge = document.getElementById('currentPlanBadge');
+            if (data.plan_type === 'pro') {
+                planBadge.textContent = 'Pro Plan';
+                planBadge.className = 'plan-badge';
+            } else {
+                planBadge.textContent = 'Free Plan';
+                planBadge.className = 'plan-badge free';
+            }
+
+            // Update projects
+            document.getElementById('projectsCount').textContent = data.usage.projects;
+            document.getElementById('projectsMax').textContent = data.limits.projects;
+            updateUsageBar('projectsBar', data.usage.projects, data.limits.projects);
+
+            // Update estimations
+            document.getElementById('estimationsCount').textContent = data.usage.estimations;
+            document.getElementById('estimationsMax').textContent = data.limits.estimations;
+            updateUsageBar('estimationsBar', data.usage.estimations, data.limits.estimations);
+
+            // Update suggestions
+            document.getElementById('suggestionsCount').textContent = data.usage.feature_suggestions;
+            document.getElementById('suggestionsMax').textContent = data.limits.feature_suggestions;
+            updateUsageBar('suggestionsBar', data.usage.feature_suggestions, data.limits.feature_suggestions);
+
+            // Show upgrade prompt if on free plan
+            console.log('🔍 Verificando si mostrar upgrade prompt...');
+            console.log('   data.plan_type === "free"?', data.plan_type === 'free');
+            console.log('   data.plan_type value:', data.plan_type, 'type:', typeof data.plan_type);
+
+            if (data.plan_type === 'free') {
+                console.log('❌ Mostrando upgrade prompt (plan es FREE)');
+                document.getElementById('upgradePrompt').style.display = 'block';
+            } else {
+                console.log('✅ NO mostrando upgrade prompt (plan es PRO)');
+                document.getElementById('upgradePrompt').style.display = 'none';
+            }
+
+        } catch (error) {
+            console.error('❌ Error loading usage data:', error);
+            console.error('Stack:', error.stack);
         }
-
-        const data = await response.json();
-
-        // Update plan badge
-        const planBadge = document.getElementById('currentPlanBadge');
-        if (data.plan_type === 'pro') {
-            planBadge.textContent = 'Pro Plan';
-            planBadge.className = 'plan-badge';
-        } else {
-            planBadge.textContent = 'Free Plan';
-            planBadge.className = 'plan-badge free';
-        }
-
-        // Update projects
-        document.getElementById('projectsCount').textContent = data.usage.projects;
-        document.getElementById('projectsMax').textContent = data.limits.projects;
-        updateUsageBar('projectsBar', data.usage.projects, data.limits.projects);
-
-        // Update estimations
-        document.getElementById('estimationsCount').textContent = data.usage.estimations;
-        document.getElementById('estimationsMax').textContent = data.limits.estimations;
-        updateUsageBar('estimationsBar', data.usage.estimations, data.limits.estimations);
-
-        // Update suggestions
-        document.getElementById('suggestionsCount').textContent = data.usage.feature_suggestions;
-        document.getElementById('suggestionsMax').textContent = data.limits.feature_suggestions;
-        updateUsageBar('suggestionsBar', data.usage.feature_suggestions, data.limits.feature_suggestions);
-
-        // Show upgrade prompt if on free plan
-        if (data.plan_type === 'free') {
-            document.getElementById('upgradePrompt').style.display = 'block';
-        }
-
-    } catch (error) {
-        console.error('Error loading usage data:', error);
     }
-}
 
-function updateUsageBar(barId, current, max) {
-    const percentage = max > 0 ? (current / max * 100) : 0;
-    const bar = document.getElementById(barId);
-    if (bar) {
-        const fill = bar.querySelector('div');
-        if (fill) {
-            fill.style.width = Math.min(percentage, 100) + '%';
+    function updateUsageBar(barId, current, max) {
+        const percentage = max > 0 ? (current / max * 100) : 0;
+        const bar = document.getElementById(barId);
+        if (bar) {
+            const fill = bar.querySelector('div');
+            if (fill) {
+                fill.style.width = Math.min(percentage, 100) + '%';
+            }
         }
     }
-}
 </script>
 {% endblock %}

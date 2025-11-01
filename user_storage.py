@@ -65,6 +65,37 @@ class UserStorage:
         except sqlite3.OperationalError:
             pass  # Column already exists
         
+        # Add subscription columns if they don't exist (for existing databases)
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN plan_type TEXT DEFAULT "free"')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN subscription_status TEXT')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN stripe_customer_id TEXT')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN trial_end TEXT')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN subscription_current_period_end TEXT')
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
         conn.commit()
         conn.close()
     
@@ -130,7 +161,9 @@ class UserStorage:
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, email, name, password_hash, created_at, updated_at, last_login, is_active, clickup_token
+            SELECT id, email, name, password_hash, created_at, updated_at, last_login, is_active, clickup_token,
+                   plan_type, subscription_status, stripe_customer_id, stripe_subscription_id, 
+                   trial_end, subscription_current_period_end
             FROM users
             WHERE id = ?
         ''', (user_id,))
@@ -143,6 +176,9 @@ class UserStorage:
             
         user = dict(row)
         user['is_active'] = bool(user.get('is_active', 1))
+        # Default to 'free' if plan_type is not set
+        if not user.get('plan_type'):
+            user['plan_type'] = 'free'
         return user
     
     def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
@@ -159,7 +195,9 @@ class UserStorage:
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, email, name, password_hash, created_at, updated_at, last_login, is_active, clickup_token
+            SELECT id, email, name, password_hash, created_at, updated_at, last_login, is_active, clickup_token,
+                   plan_type, subscription_status, stripe_customer_id, stripe_subscription_id,
+                   trial_end, subscription_current_period_end
             FROM users
             WHERE email = ?
         ''', (email,))
@@ -172,6 +210,9 @@ class UserStorage:
             
         user = dict(row)
         user['is_active'] = bool(user.get('is_active', 1))
+        # Default to 'free' if plan_type is not set
+        if not user.get('plan_type'):
+            user['plan_type'] = 'free'
         return user
     
     def update_last_login(self, user_id: str):
@@ -447,6 +488,84 @@ class UserStorage:
             return success
         except Exception as e:
             print(f"[ERROR] Failed to reset password: {e}")
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+    
+    def update_user_subscription(
+        self,
+        user_id: str,
+        plan_type: Optional[str] = None,
+        subscription_status: Optional[str] = None,
+        stripe_customer_id: Optional[str] = None,
+        stripe_subscription_id: Optional[str] = None,
+        trial_end: Optional[str] = None,
+        subscription_current_period_end: Optional[str] = None
+    ) -> bool:
+        """
+        Update user's subscription information
+        
+        Args:
+            user_id: The user's ID
+            plan_type: The plan type ('free' or 'pro')
+            subscription_status: Status ('trialing', 'active', 'past_due', 'canceled', etc.)
+            stripe_customer_id: Stripe customer ID
+            stripe_subscription_id: Stripe subscription ID
+            trial_end: Trial end date
+            subscription_current_period_end: Current subscription period end date
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            now = datetime.utcnow().isoformat()
+            
+            # Build dynamic UPDATE query based on provided parameters
+            updates = ['updated_at = ?']
+            params = [now]
+            
+            if plan_type is not None:
+                updates.append('plan_type = ?')
+                params.append(plan_type)
+            
+            if subscription_status is not None:
+                updates.append('subscription_status = ?')
+                params.append(subscription_status)
+            
+            if stripe_customer_id is not None:
+                updates.append('stripe_customer_id = ?')
+                params.append(stripe_customer_id)
+            
+            if stripe_subscription_id is not None:
+                updates.append('stripe_subscription_id = ?')
+                params.append(stripe_subscription_id)
+            
+            if trial_end is not None:
+                updates.append('trial_end = ?')
+                params.append(trial_end)
+            
+            if subscription_current_period_end is not None:
+                updates.append('subscription_current_period_end = ?')
+                params.append(subscription_current_period_end)
+            
+            params.append(user_id)
+            
+            query = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
+            cursor.execute(query, params)
+            
+            success = cursor.rowcount > 0
+            conn.commit()
+            
+            if success:
+                print(f"[INFO] Updated subscription for user {user_id}: plan_type={plan_type}, status={subscription_status}")
+            
+            return success
+        except Exception as e:
+            print(f"[ERROR] Failed to update subscription: {e}")
             conn.rollback()
             return False
         finally:

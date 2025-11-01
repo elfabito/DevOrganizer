@@ -43,7 +43,7 @@ def create_checkout_session(user_id: str, email: str, plan: str = 'pro') -> Dict
         # Determine success and cancel URLs based on environment
         if current_app.config['ENV'] == 'production':
             # Use your Render domain
-            base_url = os.getenv('APP_URL', 'https://your-app.onrender.com')
+            base_url = os.getenv('APP_URL')
         else:
             base_url = 'http://127.0.0.1:5000'
 
@@ -304,3 +304,40 @@ def get_customer_by_email(email: str) -> Optional[Dict]:
     except Exception as e:
         current_app.logger.error(f"Error getting customer by email: {str(e)}")
         return None
+
+
+def cancel_stripe_subscription(subscription_id: str) -> Dict:
+    """
+    Cancel a Stripe subscription immediately
+
+    Args:
+        subscription_id: The Stripe subscription ID to cancel
+
+    Returns:
+        Dictionary with success status and details
+    """
+    try:
+        # Cancel the subscription immediately
+        subscription = stripe.Subscription.delete(subscription_id)
+
+        current_app.logger.info(f"Canceled subscription: {subscription_id}")
+
+        return {
+            'success': True,
+            'subscription_id': subscription.id,
+            'status': subscription.status,
+            'canceled_at': subscription.canceled_at
+        }
+
+    except stripe.error.StripeError as e:
+        current_app.logger.error(f"Stripe error canceling subscription {subscription_id}: {str(e)}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+    except Exception as e:
+        current_app.logger.error(f"Error canceling subscription {subscription_id}: {str(e)}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
