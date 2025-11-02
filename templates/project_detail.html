@@ -1326,13 +1326,46 @@
 
                 <!-- List Selection -->
                 <div id="listSection" style="display: none; margin-bottom: 20px;">
-                    <label for="listSelect" style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">
-                        Select List:
-                    </label>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label for="listSelect" style="font-weight: 600; color: white; margin: 0;">
+                            Select List:
+                        </label>
+                        <button onclick="showCreateClickUpListForm()" class="btn btn-secondary"
+                            style="font-size: 12px; padding: 6px 12px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">
+                            ➕ Create New List
+                        </button>
+                    </div>
                     <select id="listSelect"
                         style="width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 14px; background: rgba(255,255,255,0.95); color: #1f2937;">
                         <option value="">Select a space first...</option>
                     </select>
+
+                    <!-- Create New List Form (hidden by default) -->
+                    <div id="clickupCreateListForm"
+                        style="display: none; margin-top: 16px; padding: 16px; background: rgba(255,255,255,0.1); border-radius: 8px;">
+                        <h4 style="color: white; margin-bottom: 12px; font-size: 16px;">Create New List</h4>
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; color: white; margin-bottom: 6px; font-size: 14px;">List
+                                Name:</label>
+                            <input type="text" id="clickupNewListName" placeholder="Enter list name"
+                                style="width: 100%; padding: 8px; border: none; border-radius: 6px; font-size: 14px;"
+                                onkeypress="if(event.key==='Enter'){event.preventDefault();createClickUpList();}">
+                        </div>
+                        <div
+                            style="background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 6px; margin-bottom: 12px;">
+                            <div style="font-size: 12px; color: white; opacity: 0.9;">
+                                <strong>📍 Location:</strong>
+                                <div id="clickupListLocationInfo" style="margin-top: 4px;"></div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="createClickUpList()" class="btn btn-primary" style="flex: 1;">Create
+                                List</button>
+                            <button onclick="hideCreateClickUpListForm()" class="btn btn-secondary"
+                                style="flex: 1; background: rgba(255,255,255,0.2); color: white;">Cancel</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Create Tasks Button -->
@@ -1388,8 +1421,12 @@
                         <div
                             style="padding: 12px; background: rgba(255,255,255,0.1); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
                             <span>✅ Linear Connected</span>
-                            <button onclick="disconnectLinear()" class="btn btn-secondary"
-                                style="font-size: 12px;">Disconnect</button>
+                            <button onclick="disconnectLinear()" class="btn"
+                                style="background: rgba(239, 68, 68, 0.9); color: white; padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s;"
+                                onmouseover="this.style.background='rgba(220, 38, 38, 1)'"
+                                onmouseout="this.style.background='rgba(239, 68, 68, 0.9)'">
+                                🔌 Disconnect
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1407,15 +1444,45 @@
 
                 <!-- Project Selection -->
                 <div id="linearProjectSection" style="margin-bottom: 20px; display: none;">
-                    <label for="linearProjectSelect"
-                        style="display: block; font-weight: 600; margin-bottom: 8px; color: white;">Select Project
-                        (Optional):</label>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label for="linearProjectSelect" style="font-weight: 600; color: white; margin: 0;">Select
+                            Project
+                            (Optional):</label>
+                        <button onclick="showCreateLinearProjectForm()" class="btn btn-secondary"
+                            style="font-size: 12px; padding: 6px 12px;">➕ Create New Project</button>
+                    </div>
                     <select id="linearProjectSelect"
                         style="width: 100%; padding: 10px; border: none; border-radius: 6px; font-size: 14px;">
                         <option value="">-- No project (create in team only) --</option>
                     </select>
                     <small style="opacity: 0.8; display: block; margin-top: 6px;">Leave blank to create issues without a
                         project</small>
+
+                    <!-- Create New Project Form (hidden by default) -->
+                    <div id="linearCreateProjectForm"
+                        style="display: none; margin-top: 16px; padding: 16px; background: rgba(255,255,255,0.1); border-radius: 8px;">
+                        <h4 style="color: white; margin-bottom: 12px; font-size: 16px;">Create New Project</h4>
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; color: white; margin-bottom: 6px; font-size: 14px;">Project
+                                Name:</label>
+                            <input type="text" id="linearNewProjectName" placeholder="Enter project name"
+                                style="width: 100%; padding: 8px; border: none; border-radius: 6px; font-size: 14px;">
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            <label
+                                style="display: block; color: white; margin-bottom: 6px; font-size: 14px;">Description
+                                (Optional):</label>
+                            <textarea id="linearNewProjectDescription" placeholder="Enter project description" rows="3"
+                                style="width: 100%; padding: 8px; border: none; border-radius: 6px; font-size: 14px; resize: vertical;"></textarea>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="createLinearProject()" class="btn btn-primary" style="flex: 1;">Create
+                                Project</button>
+                            <button onclick="hideCreateLinearProjectForm()" class="btn btn-secondary"
+                                style="flex: 1;">Cancel</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Create Issues Button -->
@@ -3494,14 +3561,6 @@
             const listSelect = document.getElementById('listSelect');
             listSelect.innerHTML = '<option value="">Select a list...</option>';
 
-            // Add "Create New List" option
-            const createNewOption = document.createElement('option');
-            createNewOption.value = '__create_new__';
-            createNewOption.textContent = '➕ Create New List...';
-            createNewOption.style.fontWeight = 'bold';
-            createNewOption.style.color = '#4CAF50';
-            listSelect.appendChild(createNewOption);
-
             if (data.lists.length === 0) {
                 showStatus('⚠️ No lists found. You can create a new list.', false);
             } else {
@@ -3513,36 +3572,23 @@
                 });
 
                 const location = folderId ? 'folder' : 'space';
-                showStatus(`✅ ${data.lists.length} lists loaded from ${location}! Select a list or create a new one.`);
+                showStatus(`✅ ${data.lists.length} lists loaded from ${location}!`);
             }
 
             // Show list section and create button
             document.getElementById('listSection').style.display = 'block';
             document.getElementById('createTasksSection').style.display = 'block';
 
-            // Add event listener for list selection
-            listSelect.onchange = handleListSelection;
-
         } catch (error) {
             showStatus('❌ ' + error.message, true);
         }
     }
 
-    async function handleListSelection(event) {
-        const selectedValue = event.target.value;
-
-        if (selectedValue === '__create_new__') {
-            // Open modal instead of prompt
-            openCreateListModal();
-            // Reset selection (will be set after successful creation)
-            event.target.value = '';
-        }
-    }
-
-    function openCreateListModal() {
+    // Show create list form
+    function showCreateClickUpListForm() {
         // Get the project name for default list name
         const projectName = '{{ project.name | safe }}' || 'New Project';
-        document.getElementById('newListNameInput').value = projectName;
+        document.getElementById('clickupNewListName').value = projectName;
 
         // Get location info
         const spaceSelect = document.getElementById('spaceSelect');
@@ -3555,47 +3601,33 @@
         if (folderName) {
             locationText += ` → Folder: ${folderName}`;
         }
-        document.getElementById('listLocationInfo').textContent = locationText;
+        document.getElementById('clickupListLocationInfo').textContent = locationText;
 
-        // Show modal
-        const modal = document.getElementById('createListModal');
-        modal.style.display = 'flex';
-
-        // Focus on input
-        setTimeout(() => {
-            document.getElementById('newListNameInput').focus();
-            document.getElementById('newListNameInput').select();
-        }, 100);
+        // Show form
+        document.getElementById('clickupCreateListForm').style.display = 'block';
+        document.getElementById('clickupNewListName').focus();
     }
 
-    function closeCreateListModal() {
-        const modal = document.getElementById('createListModal');
-        modal.style.display = 'none';
-        document.getElementById('newListNameInput').value = '';
+    // Hide create list form
+    function hideCreateClickUpListForm() {
+        document.getElementById('clickupCreateListForm').style.display = 'none';
+        document.getElementById('clickupNewListName').value = '';
     }
 
-    async function confirmCreateList() {
-        const listName = document.getElementById('newListNameInput').value.trim();
+    // Create new ClickUp list (called from inline form)
+    async function createClickUpList() {
+        const listName = document.getElementById('clickupNewListName').value.trim();
 
         if (!listName) {
-            alert('Please enter a list name');
+            showStatus('Please enter a list name', true);
             return;
         }
 
-        // Close modal and create list
-        closeCreateListModal();
-        await createNewClickUpList(listName);
+        hideCreateClickUpListForm();
+        await createNewClickUpListAPI(listName);
     }
 
-    // Close modal when clicking outside
-    document.addEventListener('click', function (event) {
-        const modal = document.getElementById('createListModal');
-        if (event.target === modal) {
-            closeCreateListModal();
-        }
-    });
-
-    async function createNewClickUpList(listName) {
+    async function createNewClickUpListAPI(listName) {
         try {
             const spaceSelect = document.getElementById('spaceSelect');
             const spaceId = spaceSelect.value;
@@ -3650,15 +3682,12 @@
             }
 
             if (data.success) {
-                // Add the new list to the dropdown and select it
-                const listSelect = document.getElementById('listSelect');
-                const newOption = document.createElement('option');
-                newOption.value = data.id;
-                newOption.textContent = data.name;
-                newOption.selected = true;
+                // Reload lists to include the new one
+                await loadClickUpLists();
 
-                // Insert after the "Create New" option (index 1)
-                listSelect.insertBefore(newOption, listSelect.options[1]);
+                // Auto-select the newly created list
+                const listSelect = document.getElementById('listSelect');
+                listSelect.value = data.id;
 
                 showStatus(`✅ List "${data.name}" created successfully!`);
             }
@@ -4081,6 +4110,68 @@
     }
     }
 
+    // Show create project form
+    function showCreateLinearProjectForm() {
+        document.getElementById('linearCreateProjectForm').style.display = 'block';
+        document.getElementById('linearNewProjectName').focus();
+    }
+
+    // Hide create project form
+    function hideCreateLinearProjectForm() {
+        document.getElementById('linearCreateProjectForm').style.display = 'none';
+        document.getElementById('linearNewProjectName').value = '';
+        document.getElementById('linearNewProjectDescription').value = '';
+    }
+
+    // Create new Linear project
+    async function createLinearProject() {
+        const teamId = document.getElementById('linearTeamSelect').value;
+        const name = document.getElementById('linearNewProjectName').value.trim();
+        const description = document.getElementById('linearNewProjectDescription').value.trim();
+
+        if (!name) {
+            showLinearStatus('Please enter a project name', true);
+            return;
+        }
+
+        try {
+            showLinearStatus('Creating project...', false);
+
+            const response = await fetch('/linear/projects', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    team_id: teamId,
+                    name: name,
+                    description: description
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                showLinearStatus(`✅ Project "${name}" created successfully!`, false);
+                hideCreateLinearProjectForm();
+
+                // Reload projects to include the new one
+                await loadLinearProjects();
+
+                // Auto-select the newly created project
+                const projectSelect = document.getElementById('linearProjectSelect');
+                projectSelect.value = data.project.id;
+            } else {
+                showLinearStatus(data.error || 'Failed to create project', true);
+            }
+        } catch (error) {
+            console.error('Error creating Linear project:', error);
+            showLinearStatus('Error creating project: ' + error.message, true);
+        }
+    }
+
     // Create issues in Linear
     async function createLinearIssues() {
         const teamId = document.getElementById('linearTeamSelect').value;
@@ -4101,11 +4192,7 @@
 
     const taskCountForLinear = phasesForLinear.reduce((sum, phase) => sum + phase.tasks.length, 0);
 
-    if (!confirm(`Create ${taskCountForLinear} issues in Linear?`)) {
-        return;
-    }
-
-    showLinearStatus('Creating issues in Linear...', false);
+    showLinearStatus(`Creating ${taskCountForLinear} issues in Linear...`, false);
 
     // Disable button during creation
     const createButton = event.target;

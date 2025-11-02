@@ -3247,8 +3247,11 @@ def save_linear_token():
             return jsonify({'success': False, 'error': 'Invalid Linear token format. Token should start with "lin_api_"'}), 400
 
         # Validate token by making a test API call
-        if not validate_linear_token(token):
-            return jsonify({'success': False, 'error': 'Invalid Linear API token. Please check your token and try again.'}), 401
+        try:
+            if not validate_linear_token(token):
+                return jsonify({'success': False, 'error': 'Invalid Linear API token. Please check your token and try again.'}), 401
+        except Exception as validation_error:
+            return jsonify({'success': False, 'error': f'Failed to validate token: {str(validation_error)}'}), 401
 
         # Save token to database
         user_id = session.get('user_id')
@@ -3357,6 +3360,41 @@ def get_linear_projects(team_id):
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/linear/projects', methods=['POST'])
+@login_required
+@require_plan('pro')
+def create_linear_project():
+    """Create a new project in Linear"""
+    try:
+        user_id = session.get('user_id')
+        token = user_storage.get_user_linear_token(user_id)
+
+        if not token:
+            return jsonify({'error': 'Linear token not configured'}), 401
+
+        data = request.get_json()
+        team_id = data.get('team_id')
+        name = data.get('name', '').strip()
+        description = data.get('description', '').strip()
+
+        if not team_id:
+            return jsonify({'error': 'Team ID is required'}), 400
+
+        if not name:
+            return jsonify({'error': 'Project name is required'}), 400
+
+        linear = LinearService(token)
+        result = linear.create_project(team_id, name, description)
+
+        if result.get('success'):
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/linear/create-issues', methods=['POST'])

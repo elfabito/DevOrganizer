@@ -26,6 +26,8 @@ class LinearService:
             api_token: Linear personal API token (starts with 'lin_api_')
         """
         self.api_token = api_token
+        # Linear API expects the token directly in Authorization header (no "Bearer" prefix)
+        # The token itself starts with 'lin_api_'
         self.headers = {
             'Authorization': api_token,
             'Content-Type': 'application/json'
@@ -51,6 +53,12 @@ class LinearService:
             if variables:
                 payload['variables'] = variables
 
+            # Sanitize headers for logging (hide token)
+            safe_headers = {k: ('***' if k == 'Authorization' else v) for k, v in self.headers.items()}
+            print(f"Making Linear API request to {self.base_url}")
+            print(f"Headers: {safe_headers}")
+            print(f"Query preview: {query[:100]}...")
+            
             response = requests.post(
                 self.base_url,
                 json=payload,
@@ -58,19 +66,56 @@ class LinearService:
                 timeout=30
             )
 
+            print(f"Response status: {response.status_code}")
+            
+            # Try to get response body before raising error
+            try:
+                data = response.json()
+                print(f"Response data: {data}")
+            except:
+                print(f"Response text: {response.text[:500]}")
+                data = {}
+            
             response.raise_for_status()
-            data = response.json()
 
             # Check for GraphQL errors
             if 'errors' in data:
                 error_messages = [err.get('message', 'Unknown error') for err in data['errors']]
+                print(f"Linear API GraphQL errors: {error_messages}")
                 raise Exception(f"Linear API errors: {', '.join(error_messages)}")
 
             return data.get('data', {})
 
+        except requests.exceptions.Timeout as e:
+            print(f"Linear API timeout: {str(e)}")
+            raise Exception(f"Linear API request timed out. Please try again.")
+        except requests.exceptions.ConnectionError as e:
+            print(f"Linear API connection error: {str(e)}")
+            raise Exception(f"Cannot connect to Linear API. Please check your internet connection.")
+        except requests.exceptions.HTTPError as e:
+            print(f"Linear API HTTP error: {str(e)}")
+            error_detail = ""
+            try:
+                error_body = response.json()
+                if 'errors' in error_body:
+                    error_msgs = [err.get('message', '') for err in error_body.get('errors', [])]
+                    error_detail = f": {', '.join(error_msgs)}"
+            except:
+                pass
+            
+            if response.status_code == 400:
+                raise Exception(f"Bad request to Linear API{error_detail}. Please check your API token format.")
+            elif response.status_code == 401:
+                raise Exception(f"Invalid Linear API token. Please check your token.")
+            elif response.status_code == 403:
+                raise Exception(f"Access denied. Please check your Linear API token permissions.")
+            else:
+                raise Exception(f"Linear API request failed with status {response.status_code}{error_detail}")
         except requests.exceptions.RequestException as e:
+            print(f"Linear API request exception: {str(e)}")
             raise Exception(f"Linear API request failed: {str(e)}")
         except Exception as e:
+            print(f"Linear API error: {str(e)}")
             raise Exception(f"Linear API error: {str(e)}")
 
     def get_viewer(self) -> Dict:
@@ -124,14 +169,16 @@ class LinearService:
             team_id: ID of the team
 
         Returns:
-            List of projects: [{id, name}, ...]
+            List of projects: [{id, name, description}, ...]
         """
         query = """
-        query($teamId: String!) {
-            projects(filter: {team: {id: {eq: $teamId}}}) {
+        query($teamId: ID!) {
+            projects(filter: {accessibleTeams: {id: {eq: $teamId}}}) {
                 nodes {
                     id
                     name
+                    description
+                    state
                 }
             }
         }
@@ -141,6 +188,58 @@ class LinearService:
         data = self._make_request(query, variables)
         projects = data.get('projects', {}).get('nodes', [])
         return projects
+    
+    def create_project(self, team_id: str, name: str, description: str = "") -> Dict:
+        """
+        Create a new project in a team
+
+        Args:
+            team_id: ID of the team
+            name: Project name
+            description: Optional project description
+
+        Returns:
+            Dict with project info: {success, project: {id, name}}
+        """
+        mutation = """
+        mutation($teamIds: [String!]!, $name: String!, $description: String) {
+            projectCreate(input: {teamIds: $teamIds, name: $name, description: $description}) {
+                success
+                project {
+                    id
+                    name
+                    description
+                }
+            }
+        }
+        """
+
+        variables = {
+            'teamIds': [team_id],
+            'name': name,
+            'description': description
+        }
+
+        try:
+            data = self._make_request(mutation, variables)
+            result = data.get('projectCreate', {})
+
+            if result.get('success'):
+                return {
+                    'success': True,
+                    'project': result.get('project', {})
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': 'Failed to create project'
+                }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
 
     def get_workflow_states(self, team_id: str) -> List[Dict]:
         """
@@ -153,7 +252,7 @@ class LinearService:
             List of workflow states: [{id, name, type}, ...]
         """
         query = """
-        query($teamId: String!) {
+        query($teamId: ID!) {
             workflowStates(filter: {team: {id: {eq: $teamId}}}) {
                 nodes {
                     id
@@ -182,7 +281,7 @@ class LinearService:
         """
         # First, try to get existing labels
         query_get = """
-        query($teamId: String!) {
+        query($teamId: ID!) {
             issueLabels(filter: {team: {id: {eq: $teamId}}}) {
                 nodes {
                     id
@@ -203,7 +302,7 @@ class LinearService:
 
             # Create new label if it doesn't exist
             mutation_create = """
-            mutation($teamId: String!, $name: String!) {
+            mutation($teamId: ID!, $name: String!) {
                 issueLabelCreate(input: {teamId: $teamId, name: $name}) {
                     issueLabel {
                         id
@@ -435,5 +534,6 @@ def validate_linear_token(token: str) -> bool:
         service = LinearService(token)
         viewer = service.get_viewer()
         return bool(viewer.get('id'))
-    except:
-        return False
+    except Exception as e:
+        print(f"Linear token validation error: {str(e)}")
+        raise Exception(f"Failed to validate Linear token: {str(e)}")
