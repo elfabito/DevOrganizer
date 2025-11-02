@@ -72,6 +72,26 @@ def generate_plan(project_name: str, project_description: str, is_new_project: b
    - Prioritize missing information and recommendations for existing systems
    - Create a task plan that focuses on enhancement, refactoring, or completion"""
         
+        # Build JSON format based on whether missing information is requested
+        missing_info_json = ""
+        missing_info_guideline = ""
+        
+        if has_missing_info:
+            missing_info_json = """  "missing_information": {
+    "summary": "2-3 sentence overview of what critical information is missing from the project description and why it matters before starting development",
+    "missing_items": ["Missing credential/access 1", "Missing technical detail 1", "Missing requirement 1"],
+    "questions_for_client": ["Specific question 1", "Specific question 2", "Specific question 3", "Specific question 4"]
+  },
+  """
+            missing_info_guideline = """1. MISSING INFORMATION: Identify critical gaps in the project description
+   - Analyze what access/credentials are needed: database credentials, API keys, cloud accounts, third-party service access
+   - Identify missing technical specifications: versions, deployment targets, infrastructure details
+   - Identify unclear requirements: ambiguous features, missing business logic, undefined specifications
+   - Generate 3-8 specific, actionable questions to ask the client
+   - Focus on practical items needed before development can start
+   - Provide comprehensive analysis of what information is missing
+"""
+        
         # Create the prompt for Groq
         prompt = f"""You are a senior software architect and project planning expert. Analyze this project and provide detailed planning information.
 
@@ -80,12 +100,7 @@ def generate_plan(project_name: str, project_description: str, is_new_project: b
 Please provide a comprehensive analysis in the following JSON format:
 
 {{
-  "missing_information": {{
-    "summary": "2-3 sentence overview of what critical information is missing from the project description and why it matters before starting development",
-    "missing_items": ["Missing credential/access 1", "Missing technical detail 1", "Missing requirement 1"],
-    "questions_for_client": ["Specific question 1", "Specific question 2", "Specific question 3", "Specific question 4"]
-  }},
-  "review": [
+{missing_info_json}  "review": [
     {{
       "category": "Category Name",
       "summary": "2-3 sentence overall assessment of this aspect",
@@ -118,25 +133,18 @@ Please provide a comprehensive analysis in the following JSON format:
 }}
 
 Guidelines:
-1. MISSING INFORMATION: Identify critical gaps in the project description
-   - Analyze what access/credentials are needed: database credentials, API keys, cloud accounts, third-party service access
-   - Identify missing technical specifications: versions, deployment targets, infrastructure details
-   - Identify unclear requirements: ambiguous features, missing business logic, undefined specifications
-   - Generate 3-8 specific, actionable questions to ask the client
-   - Focus on practical items needed before development can start
-   - If everything seems complete, still provide the section with a note like "No critical information missing, but consider asking about..."
-2. REVIEW: Analyze the project and determine 4-6 most relevant review categories based on project type
+{missing_info_guideline}{"2" if has_missing_info else "1"}. REVIEW: Analyze the project and determine 4-6 most relevant review categories based on project type
    - Choose categories dynamically (e.g., Architecture, Scalability, Security, Performance, Database Design, API Design, Testing Strategy, DevOps, User Experience, Code Quality, Maintainability, etc.)
    - For each category provide: summary (2-3 sentences), 2-4 strengths, 1-3 concerns/risks, 2-4 actionable recommendations
    - Make the review specific to THIS project - reference the actual project name and requirements
-3. Generate 3-5 relevant technical questions per category based on the project description
-4. IMPORTANT - Tailor your analysis based on project type:{focus_areas}
-5. Recommend a modern, appropriate tech stack
-6. Create 4-6 key milestones that represent major project phases
-7. Create a ClickUp plan with 4-6 phases, each with 3-5 tasks
-8. Use emojis for phase names (🚀, 📋, 🎨, 🔒, 🚢, 📊, etc.)
-9. Set task priorities: "high", "medium", or "low"
-10. Make questions and tasks specific and actionable for this particular project
+{"3" if has_missing_info else "2"}. Generate 3-5 relevant technical questions per category based on the project description
+{"4" if has_missing_info else "3"}. IMPORTANT - Tailor your analysis based on project type:{focus_areas}
+{"5" if has_missing_info else "4"}. Recommend a modern, appropriate tech stack
+{"6" if has_missing_info else "5"}. Create 4-6 key milestones that represent major project phases
+{"7" if has_missing_info else "6"}. Create a ClickUp plan with 4-6 phases, each with 3-5 tasks
+{"8" if has_missing_info else "7"}. Use emojis for phase names (🚀, 📋, 🎨, 🔒, 🚢, 📊, etc.)
+{"9" if has_missing_info else "8"}. Set task priorities: "high", "medium", or "low"
+{"10" if has_missing_info else "9"}. Make questions and tasks specific and actionable for this particular project
 
 Return ONLY the JSON object, no additional text or markdown formatting."""
 
