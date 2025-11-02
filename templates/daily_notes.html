@@ -269,6 +269,7 @@
             transform: translateY(-50px);
             opacity: 0;
         }
+
         to {
             transform: translateY(0);
             opacity: 1;
@@ -555,6 +556,7 @@
             transform: translateX(400px);
             opacity: 0;
         }
+
         to {
             transform: translateX(0);
             opacity: 1;
@@ -573,7 +575,9 @@
     }
 
     @keyframes spin {
-        to { transform: rotate(360deg); }
+        to {
+            transform: rotate(360deg);
+        }
     }
 
     /* FullCalendar customization */
@@ -680,7 +684,8 @@
 
             <div class="form-group">
                 <label class="form-label required" for="noteTitle">Title</label>
-                <input type="text" id="noteTitle" class="form-input" placeholder="Enter note title..." required maxlength="200">
+                <input type="text" id="noteTitle" class="form-input" placeholder="Enter note title..." required
+                    maxlength="200">
             </div>
 
             <div class="form-row">
@@ -702,8 +707,10 @@
 
             <div class="form-group">
                 <label class="form-label">Images (Max 5)</label>
-                <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('noteImages').click()">
-                    <input type="file" id="noteImages" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" multiple onchange="handleFileSelect(event)">
+                <div class="file-upload-area" id="fileUploadArea"
+                    onclick="document.getElementById('noteImages').click()">
+                    <input type="file" id="noteImages" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                        multiple onchange="handleFileSelect(event)">
                     <div class="file-upload-icon">📎</div>
                     <div class="file-upload-text">Click to upload or drag and drop</div>
                     <div class="file-upload-hint">PNG, JPG, GIF, WEBP (Max 16MB per image)</div>
@@ -746,7 +753,7 @@
     let noteDatesCache = [];
 
     // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         initializeCalendar();
         loadNotesForDate(selectedDate);
         updateSelectedDateDisplay(selectedDate);
@@ -766,18 +773,18 @@
                 center: 'title',
                 right: 'dayGridMonth'
             },
-            dateClick: function(info) {
+            dateClick: function (info) {
                 selectedDate = info.dateStr;
                 calendar.select(info.dateStr);
                 loadNotesForDate(selectedDate);
                 updateSelectedDateDisplay(selectedDate);
             },
-            datesSet: function(info) {
+            datesSet: function (info) {
                 const year = info.start.getFullYear();
                 const month = info.start.getMonth() + 1;
                 loadNoteDatesForMonth(year, month);
             },
-            dayCellDidMount: function(info) {
+            dayCellDidMount: function (info) {
                 const dateStr = info.date.toISOString().split('T')[0];
                 if (noteDatesCache.includes(dateStr)) {
                     info.el.classList.add('has-notes');
@@ -955,7 +962,7 @@
                 // Create new note
                 const response = await fetch('/api/daily-notes/create', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         project_id: projectId,
                         title: title,
@@ -974,7 +981,7 @@
                 // Update existing note
                 const response = await fetch(`/api/daily-notes/${noteId}`, {
                     method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         title: title,
                         content: content,
@@ -1082,7 +1089,7 @@
 
     function previewImage(file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             const container = document.getElementById('imagePreviewContainer');
             const preview = document.createElement('div');
             preview.className = 'image-preview';
@@ -1222,7 +1229,7 @@
         try {
             const response = await fetch(`/api/daily-notes/${currentNoteId}`, {
                 method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: title,
                     content: content,

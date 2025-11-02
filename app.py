@@ -3178,6 +3178,59 @@ def delete_user_clickup_token():
         current_app.logger.error(f'Error deleting ClickUp token: {str(e)}', exc_info=True)
         return jsonify({'error': f'Failed to remove token: {str(e)}'}), 500
 
+
+@app.route('/clickup/create-list', methods=['POST'])
+@login_required
+@require_plan('pro')
+def create_clickup_list():
+    """
+    Create a new list in ClickUp using user's personal token
+    """
+    try:
+        user_id = get_current_user_id()
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        data = request.get_json()
+        space_id = data.get('space_id')
+        list_name = data.get('list_name')
+        folder_id = data.get('folder_id')  # Optional
+
+        # Validate input
+        if not space_id:
+            return jsonify({'error': 'Space ID is required'}), 400
+
+        if not list_name or not list_name.strip():
+            return jsonify({'error': 'List name is required'}), 400
+
+        # Get user's ClickUp token from database
+        user_token = user_storage.get_user_clickup_token(user_id)
+
+        if not user_token or not user_token.strip():
+            return jsonify({
+                'error': 'ClickUp API token not configured',
+                'needs_config': True
+            }), 401
+
+        # Get ClickUp service with user's token
+        clickup = get_clickup_service(user_token)
+
+        # Create the list
+        current_app.logger.info(f'Creating ClickUp list "{list_name}" for user {user_id}')
+        result = clickup.create_list(space_id, list_name.strip(), folder_id)
+
+        if 'error' in result:
+            return jsonify(result), 400
+
+        return jsonify(result)
+
+    except Exception as e:
+        current_app.logger.error(f'Failed to create list: {str(e)}', exc_info=True)
+        return jsonify({
+            'error': f'Failed to create list: {str(e)}'
+        }), 500
+
+
 @app.route('/api/user/linear-token', methods=['POST'])
 @login_required
 def save_linear_token():

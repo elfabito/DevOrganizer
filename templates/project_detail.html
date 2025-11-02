@@ -347,34 +347,55 @@
     }
 
     .missing-info-card {
-        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        background: white;
         border: 2px solid #f59e0b;
         border-radius: 12px;
         overflow: hidden;
         box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+        transition: all 0.3s;
+    }
+
+    .missing-info-card:hover {
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
     }
 
     .missing-info-header {
-        background: linear-gradient(135deg, #f59e0b, #d97706);
-        color: white;
-        padding: 16px 20px;
+        cursor: pointer;
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        color: #92400e;
+        padding: 14px 18px;
+        border-bottom: 1px solid #fbbf24;
+        font-weight: 600;
+        font-size: 16px;
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: 12px;
+        transition: all 0.2s;
+    }
+
+    .missing-info-header:hover {
+        background: linear-gradient(135deg, #fde68a, #fcd34d);
+    }
+
+    .missing-info-header:after {
+        content: '▼';
+        font-size: 12px;
+        transition: transform 0.3s ease;
+        color: #d97706;
+    }
+
+    .missing-info-header.collapsed:after {
+        transform: rotate(-90deg);
     }
 
     .missing-info-icon {
-        font-size: 24px;
-    }
-
-    .missing-info-header h4 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
+        font-size: 20px;
+        margin-right: 8px;
     }
 
     .missing-info-content {
         padding: 20px;
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
     }
 
     .missing-info-summary {
@@ -971,10 +992,7 @@
             <span>📅</span>
             <span>Created: {{ project.created_at[:10] if project.created_at else 'N/A' }}</span>
         </div>
-        <div class="project-meta-item">
-            <span>🆔</span>
-            <span>ID: {{ project.id[:8] }}</span>
-        </div>
+
     </div>
 </div>
 
@@ -1029,12 +1047,12 @@
             <!-- Missing Information Section -->
             {% if project.ai_data.missing_information %}
             <div class="missing-info-container">
-                <div class="missing-info-card">
-                    <div class="missing-info-header">
-                        <span class="missing-info-icon">📋</span>
-                        <h4>Missing Information</h4>
+                <div class="missing-info-card section-card">
+                    <div class="missing-info-header section-header" data-section-id="missing-info"
+                        onclick="StateManager.toggle(this, 'section')">
+                        <span><span class="missing-info-icon">📋</span> Missing Information</span>
                     </div>
-                    <div class="missing-info-content">
+                    <div id="missing-info" class="missing-info-content collapsible-content">
                         {% if project.ai_data.missing_information.summary %}
                         <p class="missing-info-summary">{{ project.ai_data.missing_information.summary }}</p>
                         {% endif %}
@@ -1543,6 +1561,51 @@
                     </div>
                 </div>
             </div> <!-- End weekly-summary-layout -->
+        </div>
+    </div>
+
+    <!-- Create New ClickUp List Modal -->
+    <div id="createListModal" class="modal"
+        style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); overflow: auto; align-items: center; justify-content: center;">
+        <div class="modal-content"
+            style="background: white; margin: auto; padding: 30px; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #dee2e6;">
+                <h2 style="margin: 0; font-size: 22px; font-weight: 600; color: #333;">📝 Create New List</h2>
+                <button onclick="closeCreateListModal()"
+                    style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6c757d; line-height: 1;">&times;</button>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">List Name <span
+                        style="color: #dc3545;">*</span></label>
+                <input type="text" id="newListNameInput" required maxlength="100"
+                    style="width: 100%; padding: 12px 14px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 15px; box-sizing: border-box; transition: border-color 0.2s;"
+                    placeholder="Enter list name..." onfocus="this.style.borderColor='#667eea'"
+                    onblur="this.style.borderColor='#dee2e6'"
+                    onkeypress="if(event.key==='Enter'){event.preventDefault();confirmCreateList();}">
+            </div>
+
+            <div style="background: #f8f9fa; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="font-size: 13px; color: #6c757d;">
+                    <strong>📍 Location:</strong>
+                    <div id="listLocationInfo" style="margin-top: 4px; color: #495057;"></div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                <button type="button" onclick="closeCreateListModal()"
+                    style="padding: 10px 24px; border: 2px solid #6c757d; border-radius: 8px; font-size: 15px; cursor: pointer; background: white; color: #6c757d; font-weight: 500; transition: all 0.2s;"
+                    onmouseover="this.style.background='#6c757d'; this.style.color='white'"
+                    onmouseout="this.style.background='white'; this.style.color='#6c757d'">
+                    Cancel
+                </button>
+                <button type="button" onclick="confirmCreateList()" id="confirmCreateListBtn"
+                    style="padding: 10px 24px; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 500; transition: transform 0.2s;"
+                    onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    ✨ Create List
+                </button>
+            </div>
         </div>
     </div>
 
@@ -3250,7 +3313,6 @@
             // Show workspace section
             document.getElementById('workspaceSection').style.display = 'block';
             showStatus('✅ Connected successfully! Select a workspace.');
-            showConfigStatus('✅', 'Token configurado correctamente en .env');
 
         } catch (error) {
             showStatus('❌ ' + error.message, true);
@@ -3373,23 +3435,25 @@
             const listSelect = document.getElementById('listSelect');
             listSelect.innerHTML = '<option value="">Select a shared list...</option>';
 
-            if (data.lists.length === 0) {
-                listSelect.innerHTML = '<option value="">No shared lists found</option>';
-                showStatus('⚠️ No shared lists found in this workspace.', true);
-                return;
-            }
+            // Note: We don't show "Create New List" for shared lists view
+            // as we don't have direct space access
 
-            data.lists.forEach(list => {
-                const option = document.createElement('option');
-                option.value = list.id;
-                option.textContent = `${list.name} (${list.space_name})`;
-                listSelect.appendChild(option);
-            });
+            if (data.lists.length === 0) {
+                showStatus('⚠️ No shared lists found in this workspace. Select a space to create a new list.', true);
+            } else {
+                data.lists.forEach(list => {
+                    const option = document.createElement('option');
+                    option.value = list.id;
+                    option.textContent = `${list.name} (${list.space_name})`;
+                    listSelect.appendChild(option);
+                });
+
+                showStatus(`✅ ${data.lists.length} shared lists loaded! Select a list and create tasks.`);
+            }
 
             // Show list section and create button
             document.getElementById('listSection').style.display = 'block';
             document.getElementById('createTasksSection').style.display = 'block';
-            showStatus(`✅ ${data.lists.length} shared lists loaded! Select a list and create tasks.`);
 
         } catch (error) {
             showStatus('❌ ' + error.message, true);
@@ -3430,28 +3494,184 @@
             const listSelect = document.getElementById('listSelect');
             listSelect.innerHTML = '<option value="">Select a list...</option>';
 
-            if (data.lists.length === 0) {
-                listSelect.innerHTML = '<option value="">No lists found in this location</option>';
-                showStatus('⚠️ No lists found. Try selecting a different folder or space.', true);
-                return;
-            }
+            // Add "Create New List" option
+            const createNewOption = document.createElement('option');
+            createNewOption.value = '__create_new__';
+            createNewOption.textContent = '➕ Create New List...';
+            createNewOption.style.fontWeight = 'bold';
+            createNewOption.style.color = '#4CAF50';
+            listSelect.appendChild(createNewOption);
 
-            data.lists.forEach(list => {
-                const option = document.createElement('option');
-                option.value = list.id;
-                option.textContent = list.name;
-                listSelect.appendChild(option);
-            });
+            if (data.lists.length === 0) {
+                showStatus('⚠️ No lists found. You can create a new list.', false);
+            } else {
+                data.lists.forEach(list => {
+                    const option = document.createElement('option');
+                    option.value = list.id;
+                    option.textContent = list.name;
+                    listSelect.appendChild(option);
+                });
+
+                const location = folderId ? 'folder' : 'space';
+                showStatus(`✅ ${data.lists.length} lists loaded from ${location}! Select a list or create a new one.`);
+            }
 
             // Show list section and create button
             document.getElementById('listSection').style.display = 'block';
             document.getElementById('createTasksSection').style.display = 'block';
 
-            const location = folderId ? 'folder' : 'space';
-            showStatus(`✅ ${data.lists.length} lists loaded from ${location}! Select a list and create tasks.`);
+            // Add event listener for list selection
+            listSelect.onchange = handleListSelection;
 
         } catch (error) {
             showStatus('❌ ' + error.message, true);
+        }
+    }
+
+    async function handleListSelection(event) {
+        const selectedValue = event.target.value;
+
+        if (selectedValue === '__create_new__') {
+            // Open modal instead of prompt
+            openCreateListModal();
+            // Reset selection (will be set after successful creation)
+            event.target.value = '';
+        }
+    }
+
+    function openCreateListModal() {
+        // Get the project name for default list name
+        const projectName = '{{ project.name | safe }}' || 'New Project';
+        document.getElementById('newListNameInput').value = projectName;
+
+        // Get location info
+        const spaceSelect = document.getElementById('spaceSelect');
+        const folderSelect = document.getElementById('folderSelect');
+        const spaceName = spaceSelect.options[spaceSelect.selectedIndex]?.text || 'Unknown Space';
+        const folderId = folderSelect ? folderSelect.value : null;
+        const folderName = folderId && folderSelect ? folderSelect.options[folderSelect.selectedIndex]?.text : null;
+
+        let locationText = `Space: ${spaceName}`;
+        if (folderName) {
+            locationText += ` → Folder: ${folderName}`;
+        }
+        document.getElementById('listLocationInfo').textContent = locationText;
+
+        // Show modal
+        const modal = document.getElementById('createListModal');
+        modal.style.display = 'flex';
+
+        // Focus on input
+        setTimeout(() => {
+            document.getElementById('newListNameInput').focus();
+            document.getElementById('newListNameInput').select();
+        }, 100);
+    }
+
+    function closeCreateListModal() {
+        const modal = document.getElementById('createListModal');
+        modal.style.display = 'none';
+        document.getElementById('newListNameInput').value = '';
+    }
+
+    async function confirmCreateList() {
+        const listName = document.getElementById('newListNameInput').value.trim();
+
+        if (!listName) {
+            alert('Please enter a list name');
+            return;
+        }
+
+        // Close modal and create list
+        closeCreateListModal();
+        await createNewClickUpList(listName);
+    }
+
+    // Close modal when clicking outside
+    document.addEventListener('click', function (event) {
+        const modal = document.getElementById('createListModal');
+        if (event.target === modal) {
+            closeCreateListModal();
+        }
+    });
+
+    async function createNewClickUpList(listName) {
+        try {
+            const spaceSelect = document.getElementById('spaceSelect');
+            const spaceId = spaceSelect.value;
+
+            const folderSelect = document.getElementById('folderSelect');
+            const folderId = folderSelect ? folderSelect.value : null;
+
+            if (!spaceId) {
+                showStatus('❌ Please select a space first', true);
+                return;
+            }
+
+            showStatus('🔄 Creating new list...');
+
+            // Get CSRF token
+            const csrfToken = document.querySelector('input[name="csrf_token"]')?.value ||
+                document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+            const response = await fetch('/clickup/create-list', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    space_id: spaceId,
+                    list_name: listName,
+                    folder_id: folderId || null
+                })
+            });
+
+            // Check if response is JSON before parsing
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                // Handle authentication redirects or HTML error pages
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error('Authentication required. Please refresh the page and try again.');
+                }
+                throw new Error('Server error. Please try again or contact support.');
+            }
+
+            const data = await response.json();
+
+            // Handle specific error cases
+            if (response.status === 401) {
+                throw new Error(data.error || 'Please configure your ClickUp API token first.');
+            }
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || 'Failed to create list');
+            }
+
+            if (data.success) {
+                // Add the new list to the dropdown and select it
+                const listSelect = document.getElementById('listSelect');
+                const newOption = document.createElement('option');
+                newOption.value = data.id;
+                newOption.textContent = data.name;
+                newOption.selected = true;
+
+                // Insert after the "Create New" option (index 1)
+                listSelect.insertBefore(newOption, listSelect.options[1]);
+
+                showStatus(`✅ List "${data.name}" created successfully!`);
+            }
+
+        } catch (error) {
+            console.error('Error creating list:', error);
+            showStatus('❌ ' + error.message, true);
+
+            // Reset the select back to empty
+            const listSelect = document.getElementById('listSelect');
+            if (listSelect) {
+                listSelect.value = '';
+            }
         }
     }
 
@@ -4671,8 +4891,8 @@
             });
         });
 
-        // Set up review section toggles
-        document.querySelectorAll('.review-category-header').forEach(header => {
+        // Set up review section toggles (includes missing information section)
+        document.querySelectorAll('.review-category-header, .missing-info-header').forEach(header => {
             const sectionId = header.getAttribute('data-section-id');
             const content = header.nextElementSibling;
 
