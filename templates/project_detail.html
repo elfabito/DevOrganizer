@@ -2067,10 +2067,8 @@
 
         // Initialize on page load if weekly tab is active
         document.addEventListener('DOMContentLoaded', function () {
-            console.log('DOMContentLoaded - checking if weekly tab is active');
             const weeklyTab = document.getElementById('weekly-tab');
             if (weeklyTab && weeklyTab.classList.contains('active')) {
-                console.log('Weekly tab is active on load');
                 if (!weeklyCalendarInitialized) {
                     initializeWeeklyTab();
                     weeklyCalendarInitialized = true;
@@ -2079,11 +2077,8 @@
         });
 
         function initializeWeeklyTab() {
-            console.log('=== initializeWeeklyTab called ===');
-
             // Initialize year selector
             const yearSelect = document.getElementById('yearSelect');
-            console.log('yearSelect element:', yearSelect);
 
             if (!yearSelect) {
                 console.error('yearSelect element not found!');
@@ -2091,7 +2086,6 @@
             }
 
             const currentYear = new Date().getFullYear();
-            console.log('Current year:', currentYear);
 
             for (let year = currentYear - 5; year <= currentYear + 5; year++) {
                 const option = document.createElement('option');
@@ -2100,24 +2094,19 @@
                 if (year === currentYear) option.selected = true;
                 yearSelect.appendChild(option);
             }
-            console.log('Year selector populated with', yearSelect.options.length, 'options');
 
             // Set current month
             const currentMonth = new Date().getMonth();
             const monthSelect = document.getElementById('monthSelect');
-            console.log('monthSelect element:', monthSelect);
-            console.log('Setting month to:', currentMonth);
 
             if (monthSelect) {
                 monthSelect.value = currentMonth;
             }
 
             // Render calendar
-            console.log('About to call renderCalendar()');
             renderCalendar();
 
             // Load notes for today
-            console.log('Loading notes for:', weeklySelectedDate);
             loadNotesForWeeklyDate(weeklySelectedDate);
         }
 
@@ -2128,8 +2117,6 @@
             try {
                 const response = await fetch(`/api/daily-notes/calendar/${weeklyProjectId}/${year}/${month + 1}`);
                 const data = await response.json();
-
-                console.log('Calendar data:', data);
 
                 if (data.success) {
                     const grid = document.getElementById('calendarGrid');
@@ -2149,7 +2136,6 @@
 
                     // Get calendar days
                     const days = doc.querySelectorAll('.calendar-date, .calendar-date-empty');
-                    console.log('Found days:', days.length);
 
                     days.forEach(day => {
                         if (day.classList.contains('calendar-date-empty')) {
@@ -2166,7 +2152,6 @@
                         }
                     });
 
-                    console.log('Generated HTML length:', html.length);
                     grid.innerHTML = html;
                 }
             } catch (error) {
@@ -2992,9 +2977,7 @@
 
         // Initialize weekly calendar if switching to weekly tab
         if (tabName === 'weekly' && typeof weeklyCalendarInitialized !== 'undefined') {
-            console.log('Switched to weekly tab, initialized:', weeklyCalendarInitialized);
             if (!weeklyCalendarInitialized) {
-                console.log('Initializing weekly tab...');
                 if (typeof initializeWeeklyTab === 'function') {
                     initializeWeeklyTab();
                     weeklyCalendarInitialized = true;
@@ -3074,7 +3057,6 @@
 
     // Toggle question category
     function toggleCategory(headerElement) {
-        console.log('toggleCategory called with:', headerElement);
         const questionsDiv = headerElement.nextElementSibling;
         const toggleIcon = headerElement.querySelector('.toggle-icon');
 
@@ -4266,7 +4248,6 @@
         async saveState(sectionId, isExpanded, type = 'section') {
             const projectId = '{{ project.id }}';
             const storageKey = `project_${projectId}_${type}s`;
-            console.log(`[DEBUG] Saving ${type} state - ID: ${sectionId}, Expanded: ${isExpanded}`);
 
             if (!sectionId) {
                 console.error(`Error: ${type} ID is undefined or empty`);
@@ -4277,29 +4258,23 @@
             let states = {};
             try {
                 const storedData = localStorage.getItem(storageKey);
-                console.log(`[DEBUG] Retrieved from localStorage:`, storedData);
                 states = storedData ? JSON.parse(storedData) : {};
             } catch (e) {
                 console.error('Error parsing localStorage:', e);
                 states = {};
             }
 
-            console.log(`[DEBUG] Current states before update:`, states);
             states[sectionId] = isExpanded;
-            console.log(`[DEBUG] Updated states:`, states);
 
             try {
                 localStorage.setItem(storageKey, JSON.stringify(states));
-                console.log(`[DEBUG] Successfully updated localStorage`);
             } catch (e) {
                 console.error('Error saving to localStorage:', e);
             }
 
             // Save to database for persistence
             try {
-                console.log(`[DEBUG] Making API call to save ${type} state`);
                 const url = `/api/projects/${projectId}/section-states/${type}-${sectionId}`;
-                console.log(`[DEBUG] API URL: ${url}`);
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -4308,16 +4283,13 @@
                     credentials: 'same-origin'
                 });
 
-                console.log(`[DEBUG] API Response status:`, response.status);
                 const responseData = await response.json().catch(e => ({}));
-                console.log(`[DEBUG] API Response data:`, responseData);
 
                 if (!response.ok) {
                     console.error(`[ERROR] API Error ${response.status}:`, responseData);
                     return false;
                 }
 
-                console.log(`[DEBUG] Successfully saved ${type} state to server`);
                 return true;
 
             } catch (error) {
@@ -4500,7 +4472,6 @@
     // Alias functions for backward compatibility
     async function saveSectionState(sectionId, isExpanded) {
         const projectId = '{{ project.id }}';
-        console.log(`[DEBUG] saveSectionState called - Project: ${projectId}, Section: ${sectionId}, Expanded: ${isExpanded}`);
         if (!sectionId) {
             console.error('Error: sectionId is undefined or empty');
             return false;
@@ -4511,30 +4482,23 @@
         let sectionsState = {};
         try {
             const storedData = localStorage.getItem(storageKey);
-            console.log(`[DEBUG] Retrieved from localStorage:`, storedData);
             sectionsState = storedData ? JSON.parse(storedData) : {};
         } catch (e) {
             console.error('Error parsing localStorage:', e);
             sectionsState = {};
         }
 
-        console.log(`[DEBUG] Current sectionsState before update:`, sectionsState);
         sectionsState[sectionId] = isExpanded;
-        console.log(`[DEBUG] Updated sectionsState:`, sectionsState);
 
         try {
             localStorage.setItem(storageKey, JSON.stringify(sectionsState));
-            console.log(`[DEBUG] Successfully updated localStorage`);
         } catch (e) {
             console.error('Error saving to localStorage:', e);
         }
 
         // Save to database for persistence
         try {
-            console.log(`[DEBUG] Making API call to save section state`);
             const url = `/api/projects/${projectId}/section-states/${sectionId}`;
-            console.log(`[DEBUG] API URL: ${url}`);
-            console.log(`[DEBUG] Request payload:`, { is_expanded: isExpanded });
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -4545,37 +4509,16 @@
                 credentials: 'same-origin'  // Ensures cookies are sent with the request
             });
 
-            console.log(`[DEBUG] API Response status:`, response.status);
             const responseData = await response.json().catch(e => {
                 console.error('Error parsing JSON response:', e);
                 return { error: 'Invalid JSON response' };
             });
-            console.log(`[DEBUG] API Response data:`, responseData);
 
             if (!response.ok) {
                 console.error(`[ERROR] API Error ${response.status}:`, responseData);
                 return false;
             }
 
-            console.log(`[DEBUG] Successfully saved section state to server`);
-            return true;
-
-            console.log(`Response status: ${response.status}`);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Server responded with error:', errorText);
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            console.log('Server response:', result);
-
-            if (result.status !== 'success') {
-                throw new Error(result.message || 'Failed to save section state');
-            }
-
-            console.log('Section state saved successfully');
             return true;
 
         } catch (error) {
@@ -4867,8 +4810,6 @@
 
     // Initialize everything when the page loads
     document.addEventListener('DOMContentLoaded', async function () {
-        console.log('DOM fully loaded, initializing...');
-
         // Initialize ClickUp integration if needed
         autoLoadClickUpWorkspaces();
 

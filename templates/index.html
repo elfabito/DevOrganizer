@@ -358,14 +358,11 @@
     });
 
     async function loadUsageData() {
-        console.log('🚀 Iniciando carga de datos de uso...');
         try {
-            console.log('📡 Haciendo fetch a /api/user/usage...');
             const response = await fetch('/api/user/usage', {
                 method: 'GET',
                 credentials: 'same-origin'
             });
-            console.log('📡 Response status:', response.status, response.ok);
 
             if (!response.ok) {
                 console.error('Failed to load usage data');
@@ -373,11 +370,6 @@
             }
 
             const data = await response.json();
-
-            // Debug: mostrar datos recibidos
-            console.log('📊 API Response:', data);
-            console.log('🎯 plan_type:', data.plan_type);
-            console.log('🎯 subscription_status:', data.subscription_status);
 
             // Update plan badge
             const planBadge = document.getElementById('currentPlanBadge');
@@ -405,21 +397,14 @@
             updateUsageBar('suggestionsBar', data.usage.feature_suggestions, data.limits.feature_suggestions);
 
             // Show upgrade prompt if on free plan
-            console.log('🔍 Verificando si mostrar upgrade prompt...');
-            console.log('   data.plan_type === "free"?', data.plan_type === 'free');
-            console.log('   data.plan_type value:', data.plan_type, 'type:', typeof data.plan_type);
-
             if (data.plan_type === 'free') {
-                console.log('❌ Mostrando upgrade prompt (plan es FREE)');
                 document.getElementById('upgradePrompt').style.display = 'block';
             } else {
-                console.log('✅ NO mostrando upgrade prompt (plan es PRO)');
                 document.getElementById('upgradePrompt').style.display = 'none';
             }
 
         } catch (error) {
-            console.error('❌ Error loading usage data:', error);
-            console.error('Stack:', error.stack);
+            console.error('Error loading usage data:', error);
         }
     }
 

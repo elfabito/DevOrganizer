@@ -235,7 +235,7 @@
     function showError(message, duration = 10000) {
         const errorBox = document.getElementById('errorBox');
         const errorMessage = document.getElementById('errorMessage');
-        
+
         console.error('Error:', message);
         errorMessage.textContent = message;
         errorBox.style.display = 'block';
@@ -266,9 +266,7 @@
             showError('Please fill in all required fields.', 5000);
             return;
         }
-        
-        console.log('Form validation passed');
-        
+
         try {
             // Show loading overlay
             generateBtn.disabled = true;
@@ -281,9 +279,7 @@
                 project_name: projectName,
                 project_description: projectInfo
             };
-            
-            console.log('Preparing request data:', requestData);
-            
+
             // Get CSRF token from meta tag
             const csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
             let csrfToken = csrfMetaTag ? csrfMetaTag.getAttribute('content') : null;
@@ -299,9 +295,7 @@
                 showError('Security token missing. Please refresh the page and try again.');
                 return;
             }
-            
-            console.log('CSRF Token:', csrfToken ? 'Found' : 'Not found');
-            
+
             // Call API with error handling
             let response;
             try {
@@ -319,19 +313,14 @@
                 console.error('Network error:', networkError);
                 throw new Error('Network error. Please check your connection and try again.');
             }
-            
-            console.log('Response status:', response.status);
-            console.log('Response headers:', Object.fromEntries([...response.headers.entries()]));
-            
+
             // Get response text first for debugging
             const responseText = await response.text();
-            console.log('Raw response text:', responseText);
-            
+
             // Try to parse JSON response
             let data;
             try {
                 data = JSON.parse(responseText);
-                console.log('Parsed response data:', data);
             } catch (jsonError) {
                 console.error('Error parsing JSON response:', jsonError);
                 console.error('Response text that failed to parse:', responseText);
@@ -374,14 +363,14 @@
                     `Server returned status ${response.status} (${response.statusText})`,
                     ...errorDetails
                 ].filter(Boolean).join('\n');
-                
+
                 console.error('API Error:', {
                     status: response.status,
                     statusText: response.statusText,
                     data: data,
                     fullError: errorMsg
                 });
-                
+
                 throw new Error(errorMsg);
             }
             
@@ -395,7 +384,7 @@
         } catch (error) {
             console.error('Error generating estimation:', error);
             loadingOverlay.style.display = 'none';
-            
+
             // Format error message to be more user-friendly
             let userFriendlyError = error.message || 'Failed to generate estimation. Please try again.';
             

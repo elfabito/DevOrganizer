@@ -374,10 +374,11 @@
             token = xhr.getResponseHeader('X-CSRF-Token');
         }
         
-        // Log if we couldn't find a token
         if (!token) {
             console.warn('CSRF token not found in any source');
-        } else {
+        }
+
+        if (token) {
             // Update the meta tag for future use
             let meta = document.querySelector('meta[name="csrf-token"]');
             if (!meta) {
@@ -387,7 +388,7 @@
             }
             meta.content = token;
         }
-        
+
         return token;
     }
 
@@ -417,7 +418,6 @@
             // Get CSRF token
             const csrfToken = getCSRFToken();
             if (!csrfToken) {
-                console.warn('CSRF token not found in meta tag or cookies');
                 // Try to get a new token by making a GET request to the current page
                 const response = await fetch(window.location.href, {
                     method: 'GET',
@@ -430,7 +430,7 @@
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
                     const newToken = doc.querySelector('meta[name="csrf-token"]')?.content;
-                    
+
                     if (newToken) {
                         // Update the meta tag with the new token
                         let meta = document.querySelector('meta[name="csrf-token"]');
@@ -440,13 +440,14 @@
                             document.head.appendChild(meta);
                         }
                         meta.content = newToken;
-                        
+
                         // Retry the request with the new token
-                        console.log('Retrying with new CSRF token');
                         return refineEstimation();
                     }
+                } else {
+                    console.warn('CSRF token not found in meta tag or cookies');
                 }
-                
+
                 throw new Error('CSRF token not found. Please refresh the page and try again.');
             }
             
@@ -469,26 +470,20 @@
             // Check if response is JSON
             const contentType = response.headers.get('content-type');
             let data;
-            
+
             if (contentType && contentType.includes('application/json')) {
                 data = await response.json();
             } else {
                 // If not JSON, it's likely an HTML error page
                 const text = await response.text();
-                console.error('Non-JSON response received:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    headers: Object.fromEntries(response.headers.entries()),
-                    text: text.substring(0, 1000)
-                });
-                
+                console.error('Non-JSON response received:', response.status, text);
+
                 if (response.status === 401) {
                     // Session expired, redirect to login
                     window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
                     return;
                 } else if (response.status === 400 && text.includes('CSRF')) {
                     // CSRF error, reload the page to get a new token
-                    console.log('CSRF token invalid, reloading page...');
                     window.location.reload();
                     return;
                 }
@@ -506,10 +501,9 @@
             console.error('Error refining estimation:', error);
             errorDiv.textContent = error.message || 'An error occurred while refining the estimation. Please try again.';
             errorDiv.style.display = 'block';
-            
+
             // If it's a CSRF error, try to recover by reloading the page
             if (error.message.includes('CSRF') || error.message.includes('token')) {
-                console.log('CSRF error detected, reloading page...');
                 setTimeout(() => window.location.reload(), 2000);
             }
         } finally {
@@ -597,14 +591,14 @@
             // Show success notification
             const notification = document.getElementById('copySuccess');
             notification.classList.add('show');
-            
+
             // Hide after 3 seconds
             setTimeout(function() {
                 notification.classList.remove('show');
             }, 3000);
         }).catch(function(err) {
-            alert('Failed to copy to clipboard. Please try again.');
             console.error('Copy failed:', err);
+            alert('Failed to copy to clipboard. Please try again.');
         });
     }
 
