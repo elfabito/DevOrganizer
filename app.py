@@ -118,8 +118,8 @@ try:
     user_storage = RedisUserStorage(redis_client)
     weekly_storage = storage  # RedisProjectStorage handles weekly summaries
 
-    # Initialize daily notes storage (SQLite-based for image management)
-    daily_notes_storage = DailyNotesStorage()
+    # Initialize daily notes storage (using Redis for consistency)
+    daily_notes_storage = storage  # RedisProjectStorage handles daily notes
 
     app.logger.info("✓ Successfully connected to Redis")
 except Exception as e:
@@ -1736,7 +1736,7 @@ def create_daily_note():
             return jsonify({'error': 'Unauthorized access'}), 403
 
         # Create the note
-        note = daily_notes_storage.create_note(
+        note = daily_notes_storage.create_daily_note(
             project_id=project_id,
             user_id=user_id,
             title=title,
@@ -1763,7 +1763,7 @@ def get_daily_note(note_id):
             return jsonify({'error': 'User not authenticated'}), 401
 
         # Get the note
-        note = daily_notes_storage.get_note(note_id)
+        note = daily_notes_storage.get_daily_note(note_id)
         if not note:
             return jsonify({'error': 'Note not found'}), 404
 
@@ -1792,7 +1792,7 @@ def update_daily_note(note_id):
             return jsonify({'error': 'User not authenticated'}), 401
 
         # Get the note
-        note = daily_notes_storage.get_note(note_id)
+        note = daily_notes_storage.get_daily_note(note_id)
         if not note:
             return jsonify({'error': 'Note not found'}), 404
 
@@ -1809,7 +1809,7 @@ def update_daily_note(note_id):
         note_time = data.get('note_time')
 
         # Update the note
-        success = daily_notes_storage.update_note(
+        success = daily_notes_storage.update_daily_note(
             note_id=note_id,
             title=title,
             content=content,
@@ -1821,7 +1821,7 @@ def update_daily_note(note_id):
             return jsonify({'error': 'Failed to update note'}), 500
 
         # Get updated note
-        updated_note = daily_notes_storage.get_note(note_id)
+        updated_note = daily_notes_storage.get_daily_note(note_id)
 
         current_app.logger.info(f'Daily note updated: {note_id} by user {user_id}')
         return jsonify({'success': True, 'note': updated_note})
@@ -1841,7 +1841,7 @@ def delete_daily_note(note_id):
             return jsonify({'error': 'User not authenticated'}), 401
 
         # Get the note
-        note = daily_notes_storage.get_note(note_id)
+        note = daily_notes_storage.get_daily_note(note_id)
         if not note:
             return jsonify({'error': 'Note not found'}), 404
 
@@ -1851,7 +1851,7 @@ def delete_daily_note(note_id):
             return jsonify({'error': 'Unauthorized access'}), 403
 
         # Delete the note (this also deletes associated images)
-        success = daily_notes_storage.delete_note(note_id)
+        success = daily_notes_storage.delete_daily_note(note_id)
 
         if not success:
             return jsonify({'error': 'Failed to delete note'}), 500
@@ -1944,7 +1944,7 @@ def upload_image_to_note(note_id):
             return jsonify({'error': 'User not authenticated'}), 401
 
         # Get the note
-        note = daily_notes_storage.get_note(note_id)
+        note = daily_notes_storage.get_daily_note(note_id)
         if not note:
             return jsonify({'error': 'Note not found'}), 404
 
@@ -2072,7 +2072,7 @@ def delete_note_image(image_id):
             return jsonify({'error': 'Image not found'}), 404
 
         # Get the note
-        note = daily_notes_storage.get_note(image['note_id'])
+        note = daily_notes_storage.get_daily_note(image['note_id'])
         if not note:
             return jsonify({'error': 'Note not found'}), 404
 

@@ -269,6 +269,64 @@ class RedisProjectStorage:
         self.r.set(f"note:{note_id}", json.dumps(note))
         return True
 
+    def get_image_count_for_note(self, note_id: str) -> int:
+        """Get the number of images attached to a note"""
+        note = self.get_daily_note(note_id)
+        if not note:
+            return 0
+        return len(note.get('images', []))
+
+    def get_image(self, image_id: str) -> Optional[Dict]:
+        """Get a specific image by ID from any note"""
+        # Since images are stored within notes, we need to search through all notes
+        # This is less efficient, but works for the current use case
+        # In production, consider indexing images separately
+        note_ids = self.r.keys("note:*")
+        for note_key in note_ids:
+            note_data = self.r.get(note_key)
+            if note_data:
+                note = json.loads(note_data)
+                for img in note.get('images', []):
+                    if img.get('id') == image_id:
+                        return img
+        return None
+
+    def delete_note_image(self, image_id: str, delete_from_cloudinary: bool = True) -> bool:
+        """Delete an image from a note"""
+        # Find the note containing this image
+        note_ids = self.r.keys("note:*")
+        for note_key in note_ids:
+            note_data = self.r.get(note_key)
+            if note_data:
+                note = json.loads(note_data)
+                note_id = note.get('id')
+                for img in note.get('images', []):
+                    if img.get('id') == image_id:
+                        # Found the image, remove it
+                        return self.remove_image_from_note(note_id, image_id)
+        return False
+
+    def get_note_dates_for_month(self, project_id: str, year: int, month: int) -> List[str]:
+        """Get all dates in a month that have notes for a project"""
+        # Format: YYYY-MM-DD
+        import calendar
+        _, last_day = calendar.monthrange(year, month)
+        start_date = f"{year:04d}-{month:02d}-01"
+        end_date = f"{year:04d}-{month:02d}-{last_day:02d}"
+        
+        # Get all notes for the project
+        note_ids = self.r.lrange(f"project_notes:{project_id}", 0, -1) or []
+        dates_set = set()
+        
+        for nid in note_ids:
+            note = self.get_daily_note(nid)
+            if note:
+                note_date = note.get('note_date', '')
+                if start_date <= note_date <= end_date:
+                    dates_set.add(note_date)
+        
+        return sorted(list(dates_set))
+
     # Estimation methods
     def save_estimation(self, estimation_data: Dict) -> Dict:
         """Save a project estimation"""
