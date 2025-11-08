@@ -58,13 +58,24 @@
         .header h1 {
             font-size: 28px;
             color: var(--dark);
-            display: flex;
-            align-items: center;
-            gap: 12px;
             margin: 0;
         }
 
-        .header h1::before {
+        .header-logo {
+            font-size: 28px;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+
+        .header-logo:hover {
+            opacity: 0.8;
+        }
+
+        .header-logo::before {
             content: "";
             width: 35px;
             height: 35px;
@@ -331,6 +342,62 @@
             gap: 10px;
         }
 
+        /* Burger Menu */
+        .burger-menu {
+            display: none;
+            flex-direction: column;
+            cursor: pointer;
+            padding: 5px;
+            z-index: 1001;
+        }
+
+        .burger-menu span {
+            width: 25px;
+            height: 3px;
+            background-color: var(--primary);
+            margin: 3px 0;
+            transition: all 0.3s ease;
+            border-radius: 3px;
+        }
+
+        .burger-menu.active span:nth-child(1) {
+            transform: rotate(-45deg) translate(-5px, 6px);
+        }
+
+        .burger-menu.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .burger-menu.active span:nth-child(3) {
+            transform: rotate(45deg) translate(-5px, -6px);
+        }
+
+        /* Mobile Menu */
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 80px;
+            right: 0;
+            width: 250px;
+            background: var(--white);
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            z-index: 999;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            border-radius: 12px 0 0 12px;
+        }
+
+        .mobile-menu.active {
+            transform: translateX(0);
+        }
+
+        .mobile-menu a {
+            display: block;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
         .btn-danger {
             background: var(--danger);
             color: var(--white);
@@ -442,13 +509,25 @@
                 font-size: 20px;
             }
 
-            .header h1::before {
-                font-size: 24px;
+            .header-logo {
+                font-size: 20px;
             }
 
-            .header-actions {
-                width: 100%;
-                justify-content: flex-start;
+            .header-logo::before {
+                width: 28px;
+                height: 28px;
+            }
+
+            .auth-buttons {
+                display: none;
+            }
+
+            .burger-menu {
+                display: flex;
+            }
+
+            .mobile-menu {
+                display: block;
             }
 
             .btn {
@@ -521,7 +600,9 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>{% block header_title %}Dev Project Organizer{% endblock %}</h1>
+            <a href="{{ url_for('landing_page') if not current_user else url_for('index') }}" class="header-logo">
+                {% block header_title %}Dev Project Organizer{% endblock %}
+            </a>
             <div class="header-actions">
                 {% if current_user %}
                 <div class="user-menu" id="userMenu">
@@ -571,13 +652,22 @@
                     <a href="{{ url_for('web_login') }}" class="btn btn-outline btn-sm">Log in</a>
                     <a href="{{ url_for('web_signup') }}" class="btn btn-primary btn-sm">Sign up</a>
                 </div>
+                <div class="burger-menu" id="burgerMenu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
                 {% endif %}
             </div>
-            {% block header_actions %}
-            <a href="{{ url_for('landing_page' if not current_user else 'index') }}" class="btn btn-secondary">🏠
-                Home</a>
-            {% endblock %}
         </div>
+
+        <!-- Mobile Menu -->
+        {% if not current_user %}
+        <div class="mobile-menu" id="mobileMenu">
+            <a href="{{ url_for('web_login') }}" class="btn btn-outline btn-sm">Log in</a>
+            <a href="{{ url_for('web_signup') }}" class="btn btn-primary btn-sm">Sign up</a>
+        </div>
+        {% endif %}
 
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -676,6 +766,35 @@
                 const userMenu = document.getElementById('userMenu');
                 const userMenuBtn = document.getElementById('userMenuBtn');
                 const logoutBtn = document.getElementById('logoutBtn');
+
+                // Mobile burger menu
+                const burgerMenu = document.getElementById('burgerMenu');
+                const mobileMenu = document.getElementById('mobileMenu');
+
+                if (burgerMenu && mobileMenu) {
+                    burgerMenu.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        burgerMenu.classList.toggle('active');
+                        mobileMenu.classList.toggle('active');
+                    });
+
+                    // Close menu when clicking outside
+                    document.addEventListener('click', function(event) {
+                        if (!burgerMenu.contains(event.target) && !mobileMenu.contains(event.target)) {
+                            burgerMenu.classList.remove('active');
+                            mobileMenu.classList.remove('active');
+                        }
+                    });
+
+                    // Close menu when clicking on a link
+                    const mobileMenuLinks = mobileMenu.querySelectorAll('a');
+                    mobileMenuLinks.forEach(link => {
+                        link.addEventListener('click', function() {
+                            burgerMenu.classList.remove('active');
+                            mobileMenu.classList.remove('active');
+                        });
+                    });
+                }
 
                 // Toggle user menu
                 if (userMenu && userMenuBtn) {
